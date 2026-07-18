@@ -11,7 +11,8 @@ const db = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
+    database: process.env.DB_NAME,
+    ssl: { rejectUnauthorized: true }
 });
 
 db.connect((err) => {
@@ -38,6 +39,14 @@ app.use(flash());
 app.set('view engine', 'ejs');
 
 // ==================== Thiha Aung's routes ====================
+
+app.get('/', (req, res) => {
+    res.render('index');
+});
+
+app.get('/admin', (req, res) => {
+    res.render('admin/index');
+});
 
 
 // ==================== Kaido's routes ====================
