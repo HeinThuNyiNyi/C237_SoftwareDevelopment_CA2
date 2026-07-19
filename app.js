@@ -8,6 +8,7 @@ const bcrypt = require('bcrypt');
 const productModel = require('./models/productModel');
 const categoryModel = require('./models/categoryModel');
 const userModel = require('./models/userModel');
+const reservationModel = require('./models/reservationModel');
 const { isLoggedIn, isAdmin, isGuest, validateLogin } = require('./middleware/auth');
 
 const app = express();
@@ -115,7 +116,12 @@ app.get('/products/:id', (req, res) => {
         if (results.length === 0) {
             return res.status(404).send('Product not found');
         }
-        res.render('productDetails', { product: results[0] });
+        res.render('productDetails', {
+            product: results[0],
+            currentUser: req.session.user || null,
+            errors: req.flash('error'),
+            success: req.flash('success')
+        });
     });
 });
 
@@ -345,6 +351,295 @@ app.get('/logout', (req, res) => {
 
 
 // ==================== Zhen Cheng Chao's routes ====================
+
+function getAppointmentFromBody(body) {
+    return {
+        appointmentDate: (body.appointmentDate || '').trim(),
+        appointmentTime: (body.appointmentTime || '').trim(),
+        meetingLocation: (body.meetingLocation || '').trim()
+    };
+}
+
+function isValidAppointment(appointment) {
+    return Boolean(
+        appointment.appointmentDate &&
+        appointment.appointmentTime &&
+        appointment.meetingLocation &&
+        appointment.meetingLocation.length <= 255
+    );
+}
+
+// Display reservations where the logged-in user is either the buyer or seller.
+app.get('/reservations', isLoggedIn, (req, res) => {
+    reservationModel.getReservationsForUser(req.session.user.id, (error, reservations) => {
+        if (error) {
+            console.error('Error retrieving reservations:', error.message);
+            return res.status(500).send('Error retrieving reservations');
+        }
+
+        res.render('reservations/index', {
+            reservations,
+            currentUser: req.session.user,
+            errors: req.flash('error'),
+            success: req.flash('success')
+        });
+    });
+});
+
+// Show the appointment form before creating a reservation.
+app.get('/reservations/add/:productId', isLoggedIn, (req, res) => {
+    productModel.getProductById(req.params.productId, (error, products) => {
+        if (error) {
+            console.error('Error retrieving product:', error.message);
+            return res.status(500).send('Error retrieving product');
+        }
+        if (products.length === 0) {
+            return res.status(404).send('Product not found');
+        }
+
+        const product = products[0];
+        if (product.seller_id === req.session.user.id) {
+            req.flash('error', 'You cannot reserve your own product.');
+            return res.redirect('/products/' + product.id);
+        }
+        if (product.status !== 'selling' || product.quantity < 1) {
+            req.flash('error', 'This product is not currently available for reservation.');
+            return res.redirect('/products/' + product.id);
+        }
+
+        res.render('reservations/create', {
+            product,
+            currentUser: req.session.user,
+            errors: req.flash('error'),
+            formData: {}
+        });
+    });
+});
+
+// Create a pending reservation using the buyer's proposed appointment details.
+app.post('/reservations/add/:productId', isLoggedIn, (req, res) => {
+    const appointment = getAppointmentFromBody(req.body);
+    if (!isValidAppointment(appointment)) {
+        req.flash('error', 'Please provide a valid date, time and meeting location.');
+        return res.redirect('/reservations/add/' + req.params.productId);
+    }
+
+    productModel.getProductById(req.params.productId, (productError, products) => {
+        if (productError) {
+            console.error('Error retrieving product:', productError.message);
+            return res.status(500).send('Error retrieving product');
+        }
+        if (products.length === 0) {
+            return res.status(404).send('Product not found');
+        }
+
+        const product = products[0];
+        if (product.seller_id === req.session.user.id) {
+            req.flash('error', 'You cannot reserve your own product.');
+            return res.redirect('/products/' + product.id);
+        }
+        if (product.status !== 'selling' || product.quantity < 1) {
+            req.flash('error', 'This product is no longer available.');
+            return res.redirect('/products/' + product.id);
+        }
+
+        reservationModel.findActiveReservation(product.id, req.session.user.id, (duplicateError, existing) => {
+            if (duplicateError) {
+                console.error('Error checking reservation:', duplicateError.message);
+                return res.status(500).send('Error checking reservation');
+            }
+            if (existing.length > 0) {
+                req.flash('error', 'You already have an active reservation for this product.');
+                return res.redirect('/reservations');
+            }
+
+            reservationModel.createReservation({
+                productId: product.id,
+                buyerId: req.session.user.id,
+                sellerId: product.seller_id,
+                ...appointment
+            }, (createError) => {
+                if (createError) {
+                    console.error('Error creating reservation:', createError.message);
+                    return res.status(500).send('Error creating reservation');
+                }
+                req.flash('success', 'Reservation request sent to the seller.');
+                res.redirect('/reservations');
+            });
+        });
+    });
+});
+
+// Show one reservation. Only its buyer or seller may view it.
+app.get('/reservations/:id', isLoggedIn, (req, res) => {
+    reservationModel.getReservationById(req.params.id, (error, reservations) => {
+        if (error) {
+            console.error('Error retrieving reservation:', error.message);
+            return res.status(500).send('Error retrieving reservation');
+        }
+        if (reservations.length === 0) {
+            return res.status(404).send('Reservation not found');
+        }
+
+        const reservation = reservations[0];
+        const userId = req.session.user.id;
+        if (reservation.buyer_id !== userId && reservation.seller_id !== userId) {
+            return res.status(403).send('You do not have permission to view this reservation.');
+        }
+
+        res.render('reservations/details', {
+            reservation,
+            currentUser: req.session.user,
+            errors: req.flash('error'),
+            success: req.flash('success')
+        });
+    });
+});
+
+// Buyer edit form for a pending request or a seller's proposed appointment.
+app.get('/reservations/:id/edit', isLoggedIn, (req, res) => {
+    reservationModel.getReservationById(req.params.id, (error, reservations) => {
+        if (error) {
+            console.error('Error retrieving reservation:', error.message);
+            return res.status(500).send('Error retrieving reservation');
+        }
+        if (reservations.length === 0) {
+            return res.status(404).send('Reservation not found');
+        }
+
+        const reservation = reservations[0];
+        if (reservation.buyer_id !== req.session.user.id || !['pending', 'proposed'].includes(reservation.status)) {
+            req.flash('error', 'Only the buyer can edit a pending or proposed reservation.');
+            return res.redirect('/reservations/' + reservation.id);
+        }
+
+        res.render('reservations/edit', {
+            reservation,
+            currentUser: req.session.user,
+            errors: req.flash('error')
+        });
+    });
+});
+
+// Buyer updates their appointment request; a counter-proposal returns to pending.
+app.post('/reservations/:id/update', isLoggedIn, (req, res) => {
+    const appointment = getAppointmentFromBody(req.body);
+    if (!isValidAppointment(appointment)) {
+        req.flash('error', 'Please provide a valid date, time and meeting location.');
+        return res.redirect('/reservations/' + req.params.id + '/edit');
+    }
+
+    reservationModel.updateBuyerProposal(req.params.id, req.session.user.id, appointment, (error, result) => {
+        if (error) {
+            console.error('Error updating reservation:', error.message);
+            return res.status(500).send('Error updating reservation');
+        }
+        if (result.affectedRows === 0) {
+            req.flash('error', 'The reservation could not be updated.');
+        } else {
+            req.flash('success', 'Your appointment request was updated.');
+        }
+        res.redirect('/reservations/' + req.params.id);
+    });
+});
+
+// Seller proposes a different appointment to the buyer.
+app.post('/reservations/:id/propose', isLoggedIn, (req, res) => {
+    const appointment = getAppointmentFromBody(req.body);
+    if (!isValidAppointment(appointment)) {
+        req.flash('error', 'Please provide a valid proposed date, time and meeting location.');
+        return res.redirect('/reservations/' + req.params.id);
+    }
+
+    reservationModel.proposeAppointment(req.params.id, req.session.user.id, appointment, (error, result) => {
+        if (error) {
+            console.error('Error proposing appointment:', error.message);
+            return res.status(500).send('Error proposing appointment');
+        }
+        if (result.affectedRows === 0) {
+            req.flash('error', 'Only the seller can propose an appointment for an active request.');
+        } else {
+            req.flash('success', 'Your appointment proposal was sent to the buyer.');
+        }
+        res.redirect('/reservations/' + req.params.id);
+    });
+});
+
+// Seller accepts the buyer's pending appointment request.
+app.post('/reservations/:id/confirm', isLoggedIn, (req, res) => {
+    reservationModel.confirmReservation(req.params.id, req.session.user.id, (error) => {
+        if (error) {
+            console.error('Error confirming reservation:', error.message);
+            req.flash('error', error.code === 'INVALID_RESERVATION_STATE'
+                ? error.message
+                : 'The reservation could not be confirmed.');
+        } else {
+            req.flash('success', 'Reservation confirmed. The product is now reserved.');
+        }
+        res.redirect('/reservations/' + req.params.id);
+    });
+});
+
+// Buyer accepts the seller's proposed appointment.
+app.post('/reservations/:id/accept', isLoggedIn, (req, res) => {
+    reservationModel.acceptProposal(req.params.id, req.session.user.id, (error) => {
+        if (error) {
+            console.error('Error accepting proposal:', error.message);
+            req.flash('error', error.code === 'INVALID_RESERVATION_STATE'
+                ? error.message
+                : 'The proposal could not be accepted.');
+        } else {
+            req.flash('success', 'Appointment accepted. The product is now reserved.');
+        }
+        res.redirect('/reservations/' + req.params.id);
+    });
+});
+
+// Buyer or seller cancels an active reservation.
+app.post('/reservations/:id/cancel', isLoggedIn, (req, res) => {
+    reservationModel.cancelReservation(req.params.id, req.session.user.id, (error) => {
+        if (error) {
+            console.error('Error cancelling reservation:', error.message);
+            req.flash('error', error.code === 'INVALID_RESERVATION_STATE'
+                ? error.message
+                : 'The reservation could not be cancelled.');
+        } else {
+            req.flash('success', 'Reservation cancelled.');
+        }
+        res.redirect('/reservations/' + req.params.id);
+    });
+});
+
+// Buyer permanently deletes a pending or cancelled reservation (CRUD Delete).
+app.post('/reservations/:id/delete', isLoggedIn, (req, res) => {
+    reservationModel.deleteReservation(req.params.id, req.session.user.id, (error, result) => {
+        if (error) {
+            console.error('Error deleting reservation:', error.message);
+            return res.status(500).send('Error deleting reservation');
+        }
+        if (result.affectedRows === 0) {
+            req.flash('error', 'Only the buyer can delete a pending or cancelled reservation.');
+        } else {
+            req.flash('success', 'Reservation deleted.');
+        }
+        res.redirect('/reservations');
+    });
+});
+
+// Seller completes a confirmed reservation. The model records the purchase and updates stock atomically.
+app.post('/reservations/:id/complete', isLoggedIn, (req, res) => {
+    reservationModel.completeReservation(req.params.id, req.session.user.id, (error) => {
+        if (error) {
+            console.error('Error completing reservation:', error.message);
+            req.flash('error', error.code === 'INVALID_RESERVATION_STATE'
+                ? error.message
+                : 'The reservation could not be completed.');
+        } else {
+            req.flash('success', 'Reservation completed and purchase recorded.');
+        }
+        res.redirect('/reservations/' + req.params.id);
+    });
+});
 
 
 // 404 handler - catches any request that doesn't match a route above

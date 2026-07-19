@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Reservations - CampusCycle</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+    <div class="brand">
+        <div class="brand-icon">&#9851;</div>
+        <span class="campus">Campus</span><span class="cycle">Cycle</span>
+    </div>
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/browse">Browse</a>
+        <a href="/reservations" class="active">My Reservations</a>
+        <a href="/profile">My Account</a>
+    </div>
+</nav>
+
+<main class="reservation-page">
+    <div class="reservation-heading">
+        <div>
+            <h1>My Reservations</h1>
+            <p>Review your purchase requests and appointments for products you sell.</p>
+        </div>
+        <a href="/browse" class="btn-primary">Browse Products</a>
+    </div>
+
+    <% if (errors && errors.length > 0) { %>
+        <div class="alert alert-error"><%= errors[0] %></div>
+    <% } %>
+    <% if (success && success.length > 0) { %>
+        <div class="alert alert-success"><%= success[0] %></div>
+    <% } %>
+
+    <% const outgoing = reservations.filter(item => item.buyer_id === currentUser.id); %>
+    <% const incoming = reservations.filter(item => item.seller_id === currentUser.id); %>
+
+    <section class="reservation-section">
+        <h2>Requests I Made</h2>
+        <% if (outgoing.length === 0) { %>
+            <div class="reservation-empty">You have not made any reservation requests.</div>
+        <% } else { %>
+            <div class="reservation-grid">
+                <% outgoing.forEach(reservation => { %>
+                    <article class="reservation-card">
+                        <div class="reservation-card-top">
+                            <h3><%= reservation.product_name %></h3>
+                            <span class="reservation-status status-<%= reservation.status %>"><%= reservation.status %></span>
+                        </div>
+                        <p><strong>Seller:</strong> <%= reservation.seller_name %></p>
+                        <p><strong>Date:</strong> <%= reservation.appointment_date ? new Date(reservation.appointment_date).toLocaleDateString('en-SG') : 'Not set' %></p>
+                        <p><strong>Time:</strong> <%= reservation.appointment_time ? String(reservation.appointment_time).slice(0, 5) : 'Not set' %></p>
+                        <p><strong>Location:</strong> <%= reservation.meeting_location || 'Not set' %></p>
+                        <a href="/reservations/<%= reservation.id %>" class="btn-outline">View Details</a>
+                    </article>
+                <% }); %>
+            </div>
+        <% } %>
+    </section>
+
+    <section class="reservation-section">
+        <h2>Requests for My Products</h2>
+        <% if (incoming.length === 0) { %>
+            <div class="reservation-empty">No one has requested your products yet.</div>
+        <% } else { %>
+            <div class="reservation-grid">
+                <% incoming.forEach(reservation => { %>
+                    <article class="reservation-card">
+                        <div class="reservation-card-top">
+                            <h3><%= reservation.product_name %></h3>
+                            <span class="reservation-status status-<%= reservation.status %>"><%= reservation.status %></span>
+                        </div>
+                        <p><strong>Buyer:</strong> <%= reservation.buyer_name %></p>
+                        <p><strong>Date:</strong> <%= reservation.appointment_date ? new Date(reservation.appointment_date).toLocaleDateString('en-SG') : 'Not set' %></p>
+                        <p><strong>Time:</strong> <%= reservation.appointment_time ? String(reservation.appointment_time).slice(0, 5) : 'Not set' %></p>
+                        <p><strong>Location:</strong> <%= reservation.meeting_location || 'Not set' %></p>
+                        <a href="/reservations/<%= reservation.id %>" class="btn-outline">Review Request</a>
+                    </article>
+                <% }); %>
+            </div>
+        <% } %>
+    </section>
+</main>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+</body>
+</html>
