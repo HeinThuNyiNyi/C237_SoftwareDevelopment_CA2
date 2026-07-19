@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sell an Item - CampusCycle</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="brand">
+        <div class="brand-icon">&#9851;</div>
+        <span class="campus">Campus</span><span class="cycle">Cycle</span>
+    </div>
+
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/browse">Browse</a>
+    </div>
+</nav>
+
+<section class="hero">
+    <h1>Sell an Item</h1>
+    <p>Your listing goes to the admin for approval before it appears on Browse.</p>
+</section>
+
+<div class="admin-section">
+    <div class="review-card" style="display:block;">
+        <form action="/sell" method="POST">
+
+            <div style="margin-bottom:14px;">
+                <label for="name">Product Name</label><br>
+                <input type="text" id="name" name="name" class="reason-input" required>
+            </div>
+
+            <div style="margin-bottom:14px;">
+                <label for="categoryId">Category</label><br>
+                <select id="categoryId" name="categoryId" class="ban-select" required>
+                    <% categories.forEach(function(category) { %>
+                        <option value="<%= category.id %>"><%= category.name %></option>
+                    <% }); %>
+                </select>
+            </div>
+
+            <div style="margin-bottom:14px;">
+                <label for="description">Description</label><br>
+                <textarea id="description" name="description" class="reason-input" rows="3" required></textarea>
+            </div>
+
+            <div style="margin-bottom:14px;">
+                <label for="price">Price ($)</label><br>
+                <input type="number" id="price" name="price" class="reason-input" min="0" step="0.01" required>
+            </div>
+
+            <div style="margin-bottom:14px;">
+                <label for="condition">Condition</label><br>
+                <select id="condition" name="condition" class="ban-select" required>
+                    <option value="new">New</option>
+                    <option value="like_new">Like New</option>
+                    <option value="used">Used</option>
+                    <option value="worn">Worn</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:14px;">
+                <label for="quantity">Quantity</label><br>
+                <input type="number" id="quantity" name="quantity" class="reason-input" min="1" value="1" required>
+            </div>
+
+            <div style="margin-bottom:14px;">
+                <label for="image">Image Filename</label><br>
+                <input type="text" id="image" name="image" class="reason-input" placeholder="e.g. mouse.jpg" required>
+            </div>
+
+            <div style="margin-bottom:14px;">
+                <label for="contactInfo">Contact / Collection Details</label><br>
+                <input type="text" id="contactInfo" name="contactInfo" class="reason-input" placeholder="e.g. WhatsApp 9123 4567" required>
+            </div>
+
+            <button type="submit" class="btn-primary">Submit for Approval</button>
+        </form>
+    </div>
+</div>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+
+</body>
+</html>

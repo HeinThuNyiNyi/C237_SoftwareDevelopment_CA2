@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CampusCycle</title>
+<title>Browse - CampusCycle</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -16,49 +16,40 @@
 
     <div class="nav-links">
         <a href="/">Home</a>
-
-        <div class="dropdown">
-            <a href="/browse">Browse</a>
-            <div class="dropdown-menu">
-                <% categories.forEach(function(category) { %>
-                    <a href="/browse?category=<%= category.id %>"><%= category.name %></a>
-                <% }); %>
-            </div>
-        </div>
-
+        <a href="/browse">Browse</a>
         <a href="/wishlist">Wishlist</a>
         <a href="/cart">Cart</a>
-
-        <div class="dropdown">
-            <a href="/profile">Account</a>
-            <div class="dropdown-menu">
-                <a href="/profile">My Profile</a>
-                <a href="/my-listings">My Listings</a>
-                <a href="/purchase-history">Purchase History</a>
-                <a href="/sales-history">Sales History</a>
-                <a href="/reservations">My Reservations</a>
-                <a href="/notifications">Notifications</a>
-                <a href="/logout">Logout</a>
-            </div>
-        </div>
-
         <a href="/sell" class="nav-cta">+ Sell an Item</a>
     </div>
 </nav>
 
 <section class="hero">
-    <h1>Give it a <span class="highlight">second life</span> on campus</h1>
-    <p>Buy, sell and swap with fellow students &mdash; sustainably.</p>
+    <h1>Browse Listings</h1>
+    <p>Find what you need from fellow students.</p>
 </section>
 
+<form action="/browse" method="GET" class="admin-section" style="padding-top:0; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+    <input type="text" name="q" value="<%= search %>" placeholder="Search by product name" class="reason-input" style="max-width:260px; margin-top:0;">
+
+    <select name="category" class="ban-select" style="width:200px; margin-top:0;">
+        <option value="">All Categories</option>
+        <% categories.forEach(function(category) { %>
+            <option value="<%= category.id %>" <% if (String(selectedCategory) === String(category.id)) { %>selected<% } %>><%= category.name %></option>
+        <% }); %>
+    </select>
+
+    <button type="submit" class="btn-primary">Search</button>
+    <a href="/browse" class="btn-outline">Clear</a>
+</form>
+
 <div class="section-title">
-    <h2>Recently Listed</h2>
+    <h2><%= products.length %> Listing<%= products.length === 1 ? '' : 's' %> Found</h2>
 </div>
 
 <div class="product-grid">
 
     <% if (products.length === 0) { %>
-        <p>No listings yet. Be the first to <a href="/sell">sell an item</a>!</p>
+        <p>No listings match your search.</p>
     <% } %>
 
     <% products.forEach(function(product) { %>
@@ -72,7 +63,7 @@
                 <p class="product-title"><%= product.name %></p>
                 <span class="condition-tag"><%= product.condition.replace('_', ' ') %></span>
                 <p class="product-price">$<%= Number(product.price).toFixed(2) %></p>
-                <p class="seller-info">Seller: <%= product.sellerName %></p>
+                <p class="seller-info"><%= product.categoryName %> &middot; Seller: <%= product.sellerName %></p>
                 <div class="product-actions-full">
                     <a href="/products/<%= product.id %>" class="btn-outline">View Details</a>
                     <button class="btn-report" title="Report this listing">&#9873;</button>
