@@ -444,3 +444,589 @@ body {
 .user-row .user-name { font-weight: 600; }
 .user-row .user-email { font-size: 12px; color: var(--muted); }
 .user-row .user-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+
+/* ============================================================
+   Login / Authentication  (Hein Thu Nyi Nyi)
+   All classes are prefixed with .auth- so they cannot clash
+   with the styles used by the other pages.
+   ============================================================ */
+
+.auth-body {
+    margin: 0;
+    min-height: 100vh;
+}
+
+.auth-split {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ----- Left branding panel ----- */
+.auth-brand-panel {
+    flex: 1;
+    background: linear-gradient(150deg, var(--green-dark), var(--green-light));
+    color: #fff;
+    padding: 48px 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Soft decorative circle in the corner */
+.auth-brand-panel::after {
+    content: "";
+    position: absolute;
+    width: 320px;
+    height: 320px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    bottom: -110px;
+    right: -90px;
+}
+
+.auth-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 36px;
+}
+
+.auth-brand .brand-icon {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.auth-brand .campus-light { color: #ffffff; }
+.auth-brand .cycle-light { color: #d7f5e0; }
+
+.auth-tagline {
+    font-size: 34px;
+    line-height: 1.25;
+    margin: 0 0 14px 0;
+    max-width: 420px;
+}
+
+.auth-highlight {
+    color: #ffe082;
+}
+
+.auth-subtagline {
+    font-size: 15px;
+    opacity: 0.9;
+    margin: 0 0 30px 0;
+    max-width: 380px;
+}
+
+.auth-points {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.auth-points li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    opacity: 0.95;
+}
+
+.auth-tick {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.auth-foot-note {
+    margin: 40px 0 0 0;
+    font-size: 12px;
+    opacity: 0.75;
+}
+
+/* ----- Right form panel ----- */
+.auth-form-panel {
+    flex: 1;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+}
+
+.auth-form-box {
+    width: 100%;
+    max-width: 380px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 36px 32px;
+    box-shadow: 0 6px 24px rgba(27, 107, 52, 0.07);
+}
+
+.auth-title {
+    margin: 0 0 6px 0;
+    font-size: 24px;
+    color: var(--navy);
+}
+
+.auth-sub {
+    margin: 0 0 24px 0;
+    font-size: 14px;
+    color: var(--muted);
+}
+
+.auth-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text);
+}
+
+.auth-input {
+    width: 100%;
+    padding: 11px 13px;
+    font-size: 14px;
+    font-family: inherit;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fbfdfc;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.auth-input:focus {
+    border-color: var(--green-light);
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
+}
+
+.auth-hint {
+    margin: 6px 0 16px 0;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+/* Password field with the Show / Hide button inside it */
+.auth-password-wrap {
+    position: relative;
+    margin-bottom: 22px;
+}
+
+.auth-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--green-dark);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 6px;
+}
+
+.auth-submit {
+    width: 100%;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    color: #fff;
+    background: linear-gradient(135deg, var(--green-dark), var(--green-light));
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+}
+
+.auth-submit:hover { opacity: 0.92; }
+.auth-submit:active { transform: translateY(1px); }
+
+.auth-note {
+    margin: 22px 0 0 0;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--muted);
+}
+
+/* ----- Flash messages ----- */
+.auth-alert {
+    border-radius: 10px;
+    padding: 11px 14px;
+    margin-bottom: 18px;
+    font-size: 13px;
+}
+
+.auth-alert p { margin: 0; }
+.auth-alert p + p { margin-top: 6px; }
+
+.auth-alert-error {
+    background: #fdecea;
+    border: 1px solid #f5c6c2;
+    color: #a83228;
+}
+
+.auth-alert-success {
+    background: #eaf7ed;
+    border: 1px solid #c3e6cd;
+    color: var(--green-dark);
+}
+
+/* ----- Stack the two panels on smaller screens ----- */
+@media (max-width: 860px) {
+    .auth-split { flex-direction: column; }
+
+    .auth-brand-panel {
+        padding: 32px 26px;
+    }
+
+    .auth-tagline { font-size: 26px; }
+    .auth-points, .auth-foot-note { display: none; }
+    .auth-brand { margin-bottom: 18px; }
+    .auth-brand-panel::after { display: none; }
+}
+
+
+/* ============================================================
+   My Account / Profile page  (Hein Thu Nyi Nyi)
+   All classes prefixed with .profile- so they cannot clash.
+   ============================================================ */
+
+.profile-layout {
+    display: flex;
+    gap: 26px;
+    max-width: 1120px;
+    margin: 26px auto;
+    padding: 0 24px;
+    align-items: flex-start;
+}
+
+/* ----- Sidebar ----- */
+.profile-sidebar {
+    width: 234px;
+    flex-shrink: 0;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px 12px;
+    position: sticky;
+    top: 84px;
+}
+
+.profile-side-heading {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 18px 0 8px 12px;
+}
+
+.profile-side-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    color: var(--text);
+    text-decoration: none;
+    margin-bottom: 2px;
+}
+
+a.profile-side-item:hover {
+    background: #eef5f0;
+    color: var(--green-dark);
+}
+
+.profile-side-active {
+    background: #e3f2e8;
+    color: var(--green-dark);
+    font-weight: 600;
+}
+
+/* Other members' pages - visible but not clickable yet */
+.profile-side-disabled {
+    color: #a8b4b0;
+    cursor: not-allowed;
+}
+
+.profile-side-icon {
+    font-size: 15px;
+    width: 18px;
+    text-align: center;
+}
+
+/* ----- Main column ----- */
+.profile-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.profile-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+}
+
+/* ----- Profile header ----- */
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.profile-avatar {
+    width: 66px;
+    height: 66px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--green-dark), var(--green-light));
+    color: #fff;
+    font-size: 24px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.profile-identity { flex: 1; min-width: 200px; }
+
+.profile-name-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.profile-username {
+    margin: 0;
+    font-size: 21px;
+    color: var(--navy);
+}
+
+.profile-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #e3f2e8;
+    color: var(--green-dark);
+    border: 1px solid #c3e6cd;
+}
+
+.profile-badge-admin {
+    background: #eaeef5;
+    color: var(--navy);
+    border-color: #ccd6e5;
+}
+
+.profile-realname {
+    margin: 5px 0 0 0;
+    font-size: 14px;
+    color: var(--muted);
+}
+
+.profile-rating {
+    margin: 7px 0 0 0;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.profile-star { color: var(--green-light); }
+
+.profile-header-actions { flex-shrink: 0; }
+
+.profile-header-actions button[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* ----- Notice banners ----- */
+.profile-notice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: #f7fbf8;
+}
+
+.profile-notice-title {
+    margin: 0 0 4px 0;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.profile-notice-text {
+    margin: 0 0 6px 0;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.profile-notice-link {
+    font-size: 13px;
+    font-weight: 600;
+    color: #a8b4b0;
+    cursor: not-allowed;
+}
+
+.profile-notice-emoji {
+    font-size: 30px;
+    flex-shrink: 0;
+}
+
+/* ----- Card headings ----- */
+.profile-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.profile-card-head h3 {
+    margin: 0;
+    font-size: 17px;
+    color: var(--navy);
+}
+
+.profile-card-count {
+    font-size: 13px;
+    color: #a8b4b0;
+    cursor: not-allowed;
+}
+
+.profile-edit-btn {
+    text-decoration: none;
+    font-size: 13px;
+    padding: 8px 16px;
+}
+
+/* ----- Detail rows ----- */
+.profile-detail-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+}
+
+.profile-detail-row:last-child { border-bottom: none; }
+
+.profile-detail-label {
+    color: var(--muted);
+    flex-shrink: 0;
+}
+
+.profile-detail-value {
+    font-weight: 600;
+    text-align: right;
+    word-break: break-word;
+}
+
+.profile-empty {
+    font-weight: 400;
+    color: #a8b4b0;
+    font-style: italic;
+}
+
+.profile-status-active { color: var(--green-dark); }
+.profile-status-banned { color: #a83228; }
+
+.profile-placeholder {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+    padding: 8px 0;
+}
+
+/* ----- Responsive ----- */
+@media (max-width: 900px) {
+    .profile-layout { flex-direction: column; padding: 0 16px; }
+
+    .profile-sidebar {
+        width: 100%;
+        position: static;
+    }
+
+    .profile-header { flex-direction: column; align-items: flex-start; }
+    .profile-detail-row { flex-direction: column; gap: 4px; }
+    .profile-detail-value { text-align: left; }
+}
+
+
+/* ============================================================
+   Navbar dropdown hover fix  (Hein Thu Nyi Nyi)
+
+   .dropdown-menu sits at top:130%, which leaves a ~6px transparent
+   gap between the nav link and the menu. Moving the mouse down into
+   the menu crossed that gap, .dropdown:hover went false, and the menu
+   closed before it could be clicked.
+
+   This adds an invisible strip that fills the gap so the pointer never
+   leaves .dropdown on the way down. The strip sits inside the navbar
+   padding, so it does not cover anything clickable.
+   Appended as new rules - none of the original navbar CSS is changed.
+   ============================================================ */
+
+.dropdown::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    height: calc(30% + 2px);   /* 30% = the 130% offset minus the link itself */
+}
+
+/* Keep the menu painting above the invisible strip so every item
+   stays clickable right up to its top edge. */
+.dropdown-menu {
+    z-index: 1;
+}
+
+
+/* ----- Read-only account details (Hein Thu Nyi Nyi) -----
+   Students cannot edit their own details, so the Edit Profile button was
+   replaced with a lock tag and an explanatory note. */
+
+.profile-readonly-tag {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    white-space: nowrap;
+}
+
+.profile-readonly-note {
+    margin: 0 0 16px 0;
+    padding: 11px 14px;
+    background: #f7fbf8;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--muted);
+}

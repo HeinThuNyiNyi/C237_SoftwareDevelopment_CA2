@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log In &mdash; CampusCycle</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="auth-body">
+
+<div class="auth-split">
+
+    <!-- Left: branding panel -->
+    <div class="auth-brand-panel">
+        <div class="auth-brand">
+            <div class="brand-icon">&#9851;</div>
+            <span class="campus-light">Campus</span><span class="cycle-light">Cycle</span>
+        </div>
+
+        <h1 class="auth-tagline">Give it a <span class="auth-highlight">second life</span> on campus</h1>
+        <p class="auth-subtagline">The marketplace built just for Republic Polytechnic students.</p>
+
+        <ul class="auth-points">
+            <li><span class="auth-tick">&#10003;</span> Buy and sell with fellow RP students</li>
+            <li><span class="auth-tick">&#10003;</span> Every listing checked by an admin</li>
+            <li><span class="auth-tick">&#10003;</span> Meet up safely on campus</li>
+        </ul>
+
+        <p class="auth-foot-note">&copy; 2026 CampusCycle &mdash; Buy less. Reuse more.</p>
+    </div>
+
+    <!-- Right: login form -->
+    <div class="auth-form-panel">
+        <div class="auth-form-box">
+
+            <h2 class="auth-title">Welcome back</h2>
+            <p class="auth-sub">Log in with your Republic Polytechnic account.</p>
+
+            <% if (errors && errors.length > 0) { %>
+                <div class="auth-alert auth-alert-error">
+                    <% errors.forEach(function(message) { %>
+                        <p><%= message %></p>
+                    <% }); %>
+                </div>
+            <% } %>
+
+            <% if (success && success.length > 0) { %>
+                <div class="auth-alert auth-alert-success">
+                    <% success.forEach(function(message) { %>
+                        <p><%= message %></p>
+                    <% }); %>
+                </div>
+            <% } %>
+
+            <form action="/login" method="POST" novalidate>
+
+                <label class="auth-label" for="email">School Email</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    class="auth-input"
+                    placeholder="yourname@myrp.edu.sg"
+                    value="<%= oldEmail %>"
+                    required>
+                <p class="auth-hint">Must end with @myrp.edu.sg</p>
+
+                <label class="auth-label" for="password">Password</label>
+                <div class="auth-password-wrap">
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        class="auth-input"
+                        placeholder="Enter your password"
+                        required>
+                    <button type="button" class="auth-toggle" id="togglePassword">Show</button>
+                </div>
+
+                <button type="submit" class="auth-submit">Log In</button>
+            </form>
+
+            <p class="auth-note">
+                Accounts are created by the school administrator.<br>
+                Trouble logging in? Contact your admin for help.
+            </p>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+// Show / hide the password so students can check what they typed.
+document.getElementById('togglePassword').addEventListener('click', function () {
+    var field = document.getElementById('password');
+    if (field.type === 'password') {
+        field.type = 'text';
+        this.textContent = 'Hide';
+    } else {
+        field.type = 'password';
+        this.textContent = 'Show';
+    }
+});
+</script>
+
+</body>
+</html>
