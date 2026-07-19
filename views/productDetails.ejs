@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><%= product.name %> - CampusCycle</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="brand">
+        <div class="brand-icon">&#9851;</div>
+        <span class="campus">Campus</span><span class="cycle">Cycle</span>
+    </div>
+
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/browse">Browse</a>
+    </div>
+</nav>
+
+<div class="admin-section">
+    <div class="review-card">
+        <div class="review-thumb" style="width:220px; height:220px;">
+            <img src="/images/<%= product.image %>" alt="<%= product.name %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
+        </div>
+
+        <div class="review-body" style="min-width:280px;">
+            <span class="status-badge status-<%= product.status %>" style="position:static; display:inline-block; margin-bottom:8px;"><%= product.status.replace('_', ' ') %></span>
+
+            <h4 style="font-size:22px;"><%= product.name %></h4>
+            <span class="condition-tag"><%= product.condition.replace('_', ' ') %></span>
+
+            <p class="product-price" style="font-size:22px; margin:10px 0;">$<%= Number(product.price).toFixed(2) %></p>
+
+            <p class="review-meta">Category: <%= product.categoryName %></p>
+            <p class="review-meta">Quantity available: <%= product.quantity %></p>
+            <p class="review-meta">Seller: <%= product.sellerName %></p>
+            <p class="review-meta">Contact: <%= product.contact_info %></p>
+
+            <p style="margin-top:14px;"><%= product.description %></p>
+
+            <p class="rating" style="margin-top:14px;">&#9733;&#9733;&#9733;&#9733;&#9734; <span class="count">No ratings yet</span></p>
+
+            <div class="product-actions-full" style="margin-top:18px;">
+                <button class="btn-outline">&#9825; Add to Wishlist</button>
+                <button class="btn-primary">Add to Cart</button>
+                <button class="btn-secondary">Buy Now</button>
+                <button class="btn-secondary">Reserve Now</button>
+                <button class="btn-outline">Give Rating</button>
+                <button class="btn-report" title="Report this listing">&#9873;</button>
+            </div>
+        </div>
+    </div>
+
+    <a href="/browse" class="btn-outline">&larr; Back to Browse</a>
+</div>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+
+</body>
+</html>
