@@ -27,7 +27,7 @@
 
 <div class="admin-section">
     <div class="review-card" style="display:block;">
-        <form action="/sell" method="POST">
+        <form action="/sell" method="POST" enctype="multipart/form-data">
 
             <div style="margin-bottom:14px;">
                 <label for="name">Product Name</label><br>
@@ -69,8 +69,8 @@
             </div>
 
             <div style="margin-bottom:14px;">
-                <label for="image">Image Filename</label><br>
-                <input type="text" id="image" name="image" class="reason-input" placeholder="e.g. mouse.jpg" required>
+                <label for="image">Image</label><br>
+                <input type="file" id="image" name="image" accept="image/*" required>
             </div>
 
             <div style="margin-bottom:14px;">

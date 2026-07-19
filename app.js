@@ -3,10 +3,22 @@ const express = require('express');
 const mysql = require('mysql2');
 const session = require('express-session');
 const flash = require('connect-flash');
+const multer = require('multer');
 const productModel = require('./models/productModel');
 const categoryModel = require('./models/categoryModel');
 
 const app = express();
+
+// Set up multer for file uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'public/images'); // Directory to save uploaded files
+    },
+    filename: (req, file, cb) => {
+        cb(null, file.originalname);
+    }
+});
+const upload = multer({ storage: storage });
 
 // Database connection (Azure MySQL Database Server)
 const db = mysql.createConnection({
@@ -116,8 +128,15 @@ app.get('/sell', (req, res) => {
 });
 
 // Sell page - submit a new product (always starts as 'pending' until admin approves it)
-app.post('/sell', (req, res) => {
-    const { name, categoryId, description, price, condition, quantity, image, contactInfo } = req.body;
+app.post('/sell', upload.single('image'), (req, res) => {
+    const { name, categoryId, description, price, condition, quantity, contactInfo } = req.body;
+
+    let image;
+    if (req.file) {
+        image = req.file.filename; // Save only the filename
+    } else {
+        image = null;
+    }
 
     productModel.createProduct({
         sellerId: TEMP_SELLER_ID,
