@@ -1,0 +1,159 @@
+<%
+  // 公开页面只使用聚合分数和脱敏后的评价，不接触 reviewer_key 或真实 user_id。
+  const averageRating = Number(ratingSummary.averageRating || 0);
+  const reviewCount = Number(ratingSummary.reviewCount || 0);
+  const roundedAverage = Math.round(averageRating);
+  const dateFormatter = new Intl.DateTimeFormat('en-SG', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+%>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Read verified buyer reviews for <%= item.name %> on CampusCycle.">
+  <title>Reviews for <%= item.name %> · CampusCycle</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/rating.css">
+</head>
+<body>
+  <a class="skip-link" href="#reviews-list">Skip to reviews</a>
+
+  <header class="review-header">
+    <a class="back-button" href="/" aria-label="Back to CampusCycle home">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6"></path>
+      </svg>
+    </a>
+    <div>
+      <p class="eyebrow">Verified buyer feedback</p>
+      <h1>Ratings &amp; reviews</h1>
+    </div>
+    <span class="header-spacer" aria-hidden="true"></span>
+  </header>
+
+  <main class="review-shell public-reviews-shell">
+    <article class="item-summary public-item-summary" aria-label="Reviewed item">
+      <div class="item-thumbnail">
+        <% if (item.image) { %>
+          <img src="<%= item.image %>" alt="">
+        <% } else { %>
+          <span aria-hidden="true">&#9851;</span>
+        <% } %>
+      </div>
+      <div class="item-copy">
+        <span><%= item.category %></span>
+        <strong><%= item.name %></strong>
+      </div>
+      <% if (item.price !== null) { %>
+        <span class="item-price">$<%= Number(item.price).toFixed(2) %></span>
+      <% } %>
+    </article>
+
+    <% if (success) { %>
+      <div class="form-message is-success" role="status"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="form-message is-error" role="alert"><%= error %></div>
+    <% } %>
+
+    <section class="rating-overview" aria-label="Rating summary">
+      <div class="rating-score">
+        <strong><%= averageRating.toFixed(1) %></strong>
+        <span>out of 5</span>
+      </div>
+      <div>
+        <div class="summary-stars" aria-hidden="true">
+          <% for (let star = 1; star <= 5; star++) { %>
+            <span class="<%= star <= roundedAverage ? 'is-filled' : '' %>">★</span>
+          <% } %>
+        </div>
+        <p><%= reviewCount %> verified review<%= reviewCount === 1 ? '' : 's' %></p>
+      </div>
+    </section>
+
+    <section class="review-access" aria-labelledby="review-access-title">
+      <div>
+        <p class="section-kicker">Purchase required</p>
+        <h2 id="review-access-title">
+          <%= hasExistingReview ? 'Update your review' : 'Bought this item?' %>
+        </h2>
+        <% if (canReview) { %>
+          <p>Your completed purchase is verified. You can now share or update your experience.</p>
+        <% } else if (!isLoggedIn) { %>
+          <p>Sign in with the account used for the purchase to unlock the review form.</p>
+        <% } else { %>
+          <p>This account does not have a completed purchase for this item, so it can read reviews but cannot write one.</p>
+        <% } %>
+      </div>
+
+      <% if (canReview) { %>
+        <a class="write-review-link" href="/details/<%= itemId %>/rating/new">
+          <%= hasExistingReview ? 'Edit my review' : 'Write a review' %>
+        </a>
+      <% } else { %>
+        <span class="write-review-link is-disabled" aria-disabled="true">
+          <%= isLoggedIn ? 'Purchase required' : 'Sign in required' %>
+        </span>
+      <% } %>
+    </section>
+
+    <section id="reviews-list" class="reviews-list" aria-labelledby="reviews-title">
+      <div class="reviews-heading">
+        <div>
+          <p class="section-kicker">Community feedback</p>
+          <h2 id="reviews-title">What buyers said</h2>
+        </div>
+        <span><%= reviewCount %> total</span>
+      </div>
+
+      <% if (!reviews.length) { %>
+        <div class="reviews-empty">
+          <span aria-hidden="true">☆</span>
+          <h3>No reviews yet</h3>
+          <p>Once a verified buyer shares a review, it will appear here.</p>
+        </div>
+      <% } %>
+
+      <% reviews.forEach((review) => { %>
+        <article class="review-entry">
+          <header>
+            <div>
+              <strong><%= review.authorLabel %></strong>
+              <span class="verified-label">Verified purchase</span>
+            </div>
+            <time datetime="<%= new Date(review.updatedAt).toISOString() %>">
+              <%= dateFormatter.format(new Date(review.updatedAt)) %>
+            </time>
+          </header>
+
+          <div class="review-stars" aria-label="<%= review.rating %> out of 5 stars">
+            <% for (let star = 1; star <= 5; star++) { %>
+              <span class="<%= star <= review.rating ? 'is-filled' : '' %>" aria-hidden="true">★</span>
+            <% } %>
+          </div>
+
+          <p class="review-comment">
+            <%= review.comment || 'This buyer left a star rating without a written comment.' %>
+          </p>
+
+          <% if (review.media.length) { %>
+            <div class="public-review-media">
+              <% review.media.forEach((file) => { %>
+                <% if (file.mediaType === 'image') { %>
+                  <img src="<%= file.filePath %>" alt="Photo attached to this buyer review">
+                <% } else { %>
+                  <video src="<%= file.filePath %>" controls preload="metadata"></video>
+                <% } %>
+              <% }) %>
+            </div>
+          <% } %>
+        </article>
+      <% }) %>
+    </section>
+  </main>
+</body>
+</html>

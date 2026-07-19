@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sell an Item - CampusCycle</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+    <a class="brand" href="/"><span class="brand-icon">&#9851;</span><span><span class="campus">Campus</span><span class="cycle">Cycle</span></span></a>
+    <div class="nav-links"><a href="/">Home</a><a href="/browse">Browse</a></div>
+</nav>
+
+<section class="hero"><h1>Sell an Item</h1><p>Your listing goes to an admin before it appears on Browse.</p></section>
+<main class="form-shell">
+    <% if (success) { %><p class="page-message is-success"><%= success %></p><% } %>
+    <% if (error) { %><p class="page-message is-error"><%= error %></p><% } %>
+    <form action="/sell" method="POST" class="listing-form">
+        <label>Product Name<input type="text" name="name" class="reason-input" required></label>
+        <label>Category
+            <select name="categoryId" class="ban-select" required>
+                <% categories.forEach((category) => { %><option value="<%= category.id %>"><%= category.name %></option><% }) %>
+            </select>
+        </label>
+        <label class="full-field">Description<textarea name="description" class="reason-input" rows="4" required></textarea></label>
+        <label>Price ($)<input type="number" name="price" class="reason-input" min="0" step="0.01" required></label>
+        <label>Condition
+            <select name="condition" class="ban-select" required>
+                <option value="new">New</option><option value="like_new">Like New</option><option value="used">Used</option><option value="worn">Worn</option>
+            </select>
+        </label>
+        <label>Quantity<input type="number" name="quantity" class="reason-input" min="1" value="1" required></label>
+        <label>Image filename<input type="text" name="image" class="reason-input" placeholder="e.g. mouse.jpg" required></label>
+        <label class="full-field">Contact / Collection Details<input type="text" name="contactInfo" class="reason-input" placeholder="e.g. WhatsApp 9123 4567" required></label>
+        <button type="submit" class="btn-primary full-field">Submit for Approval</button>
+    </form>
+</main>
+
+<footer class="footer">&copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.</footer>
+</body>
+</html>

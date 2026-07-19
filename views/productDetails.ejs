@@ -1,0 +1,60 @@
+<%
+    const average = Number(ratingSummary.averageRating || 0);
+    const reviewCount = Number(ratingSummary.reviewCount || 0);
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><%= product.name %> - CampusCycle</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+    <a class="brand" href="/"><span class="brand-icon">&#9851;</span><span><span class="campus">Campus</span><span class="cycle">Cycle</span></span></a>
+    <div class="nav-links"><a href="/">Home</a><a href="/browse">Browse</a></div>
+</nav>
+
+<main class="admin-section product-detail-shell">
+    <article class="review-card product-detail-card">
+        <div class="product-detail-image">
+            <% if (product.image) { %><img src="/images/<%= product.image %>" alt="<%= product.name %>"><% } %>
+        </div>
+        <div class="review-body">
+            <span class="status-badge status-<%= product.status %> product-detail-status"><%= product.status.replace('_', ' ') %></span>
+            <h1><%= product.name %></h1>
+            <span class="condition-tag"><%= product.condition.replace('_', ' ') %></span>
+            <p class="product-price product-detail-price">$<%= Number(product.price).toFixed(2) %></p>
+            <p class="review-meta">Category: <%= product.categoryName %></p>
+            <p class="review-meta">Quantity available: <%= product.quantity %></p>
+            <p class="review-meta">Seller: <%= product.sellerName %></p>
+            <p class="review-meta">Contact: <%= product.contact_info || 'Ask the seller' %></p>
+            <p class="product-description"><%= product.description || 'No description provided.' %></p>
+
+            <!-- 产品详情页也读取真实评分；链接只负责查看公开评价。 -->
+            <a href="/details/<%= product.id %>/ratings" class="rating product-detail-rating">
+                <span class="rating-stars" aria-hidden="true">
+                    <% for (let star = 1; star <= 5; star++) { %><span class="<%= star <= Math.round(average) ? 'is-filled' : '' %>">★</span><% } %>
+                </span>
+                <strong><%= average.toFixed(1) %></strong>
+                <span class="count"><%= reviewCount %> verified review<%= reviewCount === 1 ? '' : 's' %></span>
+            </a>
+
+            <div class="product-actions-full product-detail-actions">
+                <button class="btn-outline">&#9825; Add to Wishlist</button>
+                <button class="btn-primary">Add to Cart</button>
+                <button class="btn-secondary">Buy Now</button>
+                <button class="btn-secondary">Reserve Now</button>
+                <a href="/details/<%= product.id %>/ratings" class="btn-outline">Read Reviews</a>
+                <button class="btn-report" title="Report this listing">&#9873;</button>
+            </div>
+        </div>
+    </article>
+    <a href="/browse" class="btn-outline">&larr; Back to Browse</a>
+</main>
+
+<footer class="footer">&copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.</footer>
+</body>
+</html>

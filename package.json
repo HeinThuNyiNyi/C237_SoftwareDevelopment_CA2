@@ -4,14 +4,20 @@
   "description": "C237 Software Application Development CA2 project",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "seed:ratings": "node scripts/seedRatingTestData.js"
   },
   "dependencies": {
     "connect-flash": "^0.1.1",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
-    "express": "^4.19.2",
+    "express": "^4.22.2",
     "express-session": "^1.18.0",
-    "mysql2": "^3.11.0"
+    "multer": "^2.2.0",
+    "mysql2": "^3.23.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }
