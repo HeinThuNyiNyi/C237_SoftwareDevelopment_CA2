@@ -26,18 +26,6 @@ function getApprovedProducts(filters, callback) {
     db.query(sql, params, callback);
 }
 
-// Most recently approved products, for the homepage "Recently Listed" section
-function getRecentApproved(limit, callback) {
-    const sql = `SELECT products.*, categories.name AS categoryName, users.name AS sellerName
-                 FROM products
-                 JOIN users ON products.seller_id = users.id
-                 LEFT JOIN categories ON products.category_id = categories.id
-                 WHERE products.status IN ('selling', 'reserved', 'sold_out')
-                 ORDER BY products.created_at DESC
-                 LIMIT ?`;
-    db.query(sql, [limit], callback);
-}
-
 // One product with its category and seller info, for the product details page
 function getProductById(productId, callback) {
     const sql = `SELECT products.*, categories.name AS categoryName, users.name AS sellerName
@@ -92,7 +80,6 @@ function rejectProduct(productId, reason, callback) {
 
 module.exports = {
     getApprovedProducts,
-    getRecentApproved,
     getProductById,
     createProduct,
     getPendingProducts,

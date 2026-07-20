@@ -68,31 +68,9 @@ app.set('view engine', 'ejs');
 // Using the seeded 'Thiha Aung' user (id 2) as the seller for now.
 const TEMP_SELLER_ID = 2;
 
-// Homepage - shows the most recently approved listings
+// Homepage - the listings page is now Browse, so "/" just goes straight there.
 app.get('/', (req, res) => {
-    productModel.getRecentApproved(3, (error, results) => {
-        if (error) {
-            console.error('Database query error:', error.message);
-            return res.send('Error retrieving products');
-        }
-        categoryModel.getAllCategories((catError, categories) => {
-            if (catError) {
-                console.error('Database query error:', catError.message);
-                return res.send('Error retrieving categories');
-            }
-            ratingModel.getSummariesByProductIds(results.map((product) => product.id), (ratingError, summaries) => {
-                if (ratingError) {
-                    console.error('Database query error:', ratingError.message);
-                    return res.send('Error retrieving ratings');
-                }
-                const products = results.map((product) => ({
-                    ...product,
-                    ratingSummary: summaries.get(Number(product.id)) || { averageRating: 0, reviewCount: 0 }
-                }));
-                res.render('index', { products: products, categories: categories });
-            });
-        });
-    });
+    res.redirect('/browse');
 });
 
 // Browse page - approved listings only, filterable by category and searchable by name
