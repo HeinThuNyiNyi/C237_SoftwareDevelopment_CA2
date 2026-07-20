@@ -1,3 +1,7 @@
+<%
+    const average = Number((ratingSummary && ratingSummary.averageRating) || 0);
+    const reviewCount = Number((ratingSummary && ratingSummary.reviewCount) || 0);
+%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -95,7 +99,14 @@
 
             <p style="margin-top:14px;"><%= product.description %></p>
 
-            <p class="rating" style="margin-top:14px;">&#9733;&#9733;&#9733;&#9733;&#9734; <span class="count">No ratings yet</span></p>
+            <!-- Rating summary comes from the ratings table; the link only opens the public reviews list. -->
+            <a href="/details/<%= product.id %>/ratings" class="rating" style="margin-top:14px;">
+                <span class="rating-stars" aria-hidden="true">
+                    <% for (let star = 1; star <= 5; star++) { %><span class="<%= star <= Math.round(average) ? 'is-filled' : '' %>">★</span><% } %>
+                </span>
+                <strong><%= average.toFixed(1) %></strong>
+                <span class="count"><%= reviewCount %> verified review<%= reviewCount === 1 ? '' : 's' %></span>
+            </a>
 
             <div class="product-actions-full" style="margin-top:18px;">
                 <button class="btn-outline">&#9825; Add to Wishlist</button>
@@ -111,7 +122,7 @@
                 <% } else { %>
                     <button class="btn-secondary" disabled>Unavailable</button>
                 <% } %>
-                <button class="btn-outline">Give Rating</button>
+                <a href="/details/<%= product.id %>/ratings" class="btn-outline">Give Rating</a>
                 <a href="/user_report/<%= product.id %>" class="btn-report" title="Report this listing">&#9873;</a>
             </div>
         </div>

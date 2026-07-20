@@ -129,11 +129,31 @@ CREATE TABLE IF NOT EXISTS ratings (
     seller_id INT NOT NULL,
     rating TINYINT NOT NULL,
     comment VARCHAR(500),
+    is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_rating_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
     CONSTRAINT fk_rating_buyer FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_rating_seller FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT chk_rating_range CHECK (rating BETWEEN 1 AND 5)
+    CONSTRAINT chk_rating_range CHECK (rating BETWEEN 1 AND 5),
+    UNIQUE KEY uq_rating_buyer_product (buyer_id, product_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- rating_media: photos/videos attached to a rating
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS rating_media (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    rating_id INT NOT NULL,
+    media_type ENUM('image', 'video') NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    original_name VARCHAR(255) NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    size_bytes INT UNSIGNED NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_rating_media_rating_id (rating_id),
+    CONSTRAINT fk_rating_media_rating FOREIGN KEY (rating_id)
+        REFERENCES ratings(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------

@@ -213,13 +213,40 @@ body {
 }
 
 .rating {
-    color: #f5a623;
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text);
     font-size: 13px;
+    text-decoration: none;
+}
+
+.rating-stars {
+    display: inline-flex;
+    gap: 1px;
+}
+
+.rating-stars span {
+    color: #cbd3ce;
+    transition: color 0.18s ease, transform 0.18s ease;
+}
+
+.rating-stars span.is-filled {
+    color: #f2aa2a;
+}
+
+.rating:hover .rating-stars span {
+    transform: translateY(-1px);
+}
+
+.rating strong {
+    color: var(--green-dark);
+    font-variant-numeric: tabular-nums;
 }
 
 .rating span.count {
     color: var(--muted);
-    margin-left: 4px;
 }
 
 .product-actions {
@@ -284,6 +311,9 @@ body {
 .status-pending { background: var(--navy); }
 .status-rejected { background: #c62828; }
 
+/* Report status (reports.status: pending / approved / rejected) */
+.status-approved { background: #1565c0; }
+
 /* ===== Product card extras ===== */
 .condition-tag {
     display: inline-block;
@@ -341,10 +371,6 @@ body {
 }
 
 .btn-report {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
     border: 1px solid var(--border);
     background: #fff;
     color: var(--muted);
@@ -352,6 +378,10 @@ body {
     width: 32px;
     height: 32px;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
 }
 
 .btn-report:hover { color: #c62828; border-color: #f3c1c1; }
@@ -449,10 +479,8 @@ body {
 .user-row .user-email { font-size: 12px; color: var(--muted); }
 .user-row .user-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
-/* ===== Report status (reports.status: pending / approved / rejected) ===== */
-.status-approved { background: #1565c0; }
 
-/* =====================================================
+/* ============================================================
    Login / Authentication  (Hein Thu Nyi Nyi)
    All classes are prefixed with .auth- so they cannot clash
    with the styles used by the other pages.
@@ -708,7 +736,7 @@ body {
 }
 
 
-/* =====================================================
+/* ============================================================
    My Account / Profile page  (Hein Thu Nyi Nyi)
    All classes prefixed with .profile- so they cannot clash.
    ============================================================ */
@@ -981,7 +1009,7 @@ a.profile-side-item:hover {
 }
 
 
-/* =====================================================
+/* ============================================================
    Navbar dropdown hover fix  (Hein Thu Nyi Nyi)
 
    .dropdown-menu sits at top:130%, which leaves a ~6px transparent
@@ -1325,7 +1353,7 @@ a.profile-side-item:hover {
 }
 
 
-/* =====================================================
+/* ============================================================
    Public member profile  (Hein Thu Nyi Nyi)
    Shown when one member views another member - a buyer clicking a
    seller's name, or a seller clicking a buyer's name.
@@ -1523,7 +1551,7 @@ a.profile-side-item:hover {
 }
 
 
-/* =====================================================
+/* ============================================================
    Seller bar on the product details page  (Hein Thu Nyi Nyi)
    Prefixed .sellerbar- so it cannot clash with anything else.
    ============================================================ */

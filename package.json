@@ -4,7 +4,8 @@
   "description": "C237 Software Application Development CA2 project",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "seed:ratings": "node scripts/seedRatingTestData.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
