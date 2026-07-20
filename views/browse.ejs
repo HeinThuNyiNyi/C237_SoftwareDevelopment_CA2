@@ -53,6 +53,8 @@
     <% } %>
 
     <% products.forEach(function(product) { %>
+        <% const average = Number(product.ratingSummary.averageRating || 0); %>
+        <% const count = Number(product.ratingSummary.reviewCount || 0); %>
         <div class="product-card">
             <div class="product-image">
                 <img src="/images/<%= product.image %>" alt="<%= product.name %>" style="width:100%; height:100%; object-fit:cover;">
@@ -64,9 +66,21 @@
                 <span class="condition-tag"><%= product.condition.replace('_', ' ') %></span>
                 <p class="product-price">$<%= Number(product.price).toFixed(2) %></p>
                 <p class="seller-info"><%= product.categoryName %> &middot; Seller: <%= product.sellerName %></p>
+
+                <!-- Rating comes from the ratings table; the link only opens the public reviews list. -->
+                <a href="/details/<%= product.id %>/ratings" class="rating" aria-label="<%= count ? `${average} out of 5 from ${count} reviews` : 'No verified reviews yet' %>">
+                    <span class="rating-stars" aria-hidden="true">
+                        <% for (let star = 1; star <= 5; star++) { %>
+                            <span class="<%= star <= Math.round(average) ? 'is-filled' : '' %>">★</span>
+                        <% } %>
+                    </span>
+                    <strong><%= average.toFixed(1) %></strong>
+                    <span class="count">(<%= count %>)</span>
+                </a>
+
                 <div class="product-actions-full">
                     <a href="/products/<%= product.id %>" class="btn-outline">View Details</a>
-                    <button class="btn-report" title="Report this listing">&#9873;</button>
+                    <a href="/user_report/<%= product.id %>" class="btn-report" title="Report this listing">&#9873;</a>
                 </div>
             </div>
         </div>

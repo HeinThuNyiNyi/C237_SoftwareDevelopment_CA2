@@ -1,3 +1,7 @@
+<%
+    const average = Number((ratingSummary && ratingSummary.averageRating) || 0);
+    const reviewCount = Number((ratingSummary && ratingSummary.reviewCount) || 0);
+%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,10 +21,63 @@
     <div class="nav-links">
         <a href="/">Home</a>
         <a href="/browse">Browse</a>
+        <% if (currentUser) { %>
+            <a href="/reservations">My Reservations</a>
+        <% } %>
     </div>
 </nav>
 
+<!-- ============================================================
+     Seller bar (Hein Thu Nyi Nyi)
+     Sits above the listing so a buyer can see who is selling and open
+     their profile. Hidden if the seller could not be loaded.
+     The "Seller history" button is left inactive for Thiha Aung.
+     ============================================================ -->
+<% if (sellerInfo) { %>
+<div class="sellerbar">
+    <a href="/users/<%= sellerInfo.id %>" class="sellerbar-main">
+        <div class="sellerbar-avatar"><%= sellerInfo.initials %></div>
+
+        <div class="sellerbar-info">
+            <div class="sellerbar-name-row">
+                <span class="sellerbar-name"><%= sellerInfo.name %></span>
+                <% if (sellerInfo.isGoodSeller) { %>
+                    <span class="sellerbar-badge">Highly rated seller</span>
+                <% } %>
+            </div>
+
+            <div class="sellerbar-meta">
+                <span><%= sellerInfo.lastSeen %></span>
+                <span class="sellerbar-sep">|</span>
+                <span>Member for <%= sellerInfo.membershipLength %></span>
+                <span class="sellerbar-sep">|</span>
+                <span><%= sellerInfo.itemsSold %> sold</span>
+                <% if (sellerInfo.reviewCount > 0) { %>
+                    <span class="sellerbar-sep">|</span>
+                    <span><%= sellerInfo.positivePercent %>% positive</span>
+                <% } else { %>
+                    <span class="sellerbar-sep">|</span>
+                    <span>No reviews yet</span>
+                <% } %>
+            </div>
+        </div>
+    </a>
+
+    <div class="sellerbar-actions">
+        <a href="/users/<%= sellerInfo.id %>" class="sellerbar-btn">View profile</a>
+        <button class="sellerbar-btn" disabled>Seller history</button>
+    </div>
+</div>
+<% } %>
+
 <div class="admin-section">
+    <% if (errors && errors.length > 0) { %>
+        <div class="alert alert-error"><%= errors[0] %></div>
+    <% } %>
+    <% if (success && success.length > 0) { %>
+        <div class="alert alert-success"><%= success[0] %></div>
+    <% } %>
+
     <div class="review-card">
         <div class="review-thumb" style="width:220px; height:220px;">
             <img src="/images/<%= product.image %>" alt="<%= product.name %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
@@ -36,20 +93,36 @@
 
             <p class="review-meta">Category: <%= product.categoryName %></p>
             <p class="review-meta">Quantity available: <%= product.quantity %></p>
-            <p class="review-meta">Seller: <%= product.sellerName %></p>
+            <p class="review-meta">Seller: <%= product.sellerName %> &middot; <a href="/report_user/<%= product.seller_id %>">Report Seller</a></p>
             <p class="review-meta">Contact: <%= product.contact_info %></p>
 
             <p style="margin-top:14px;"><%= product.description %></p>
 
-            <p class="rating" style="margin-top:14px;">&#9733;&#9733;&#9733;&#9733;&#9734; <span class="count">No ratings yet</span></p>
+            <!-- Rating summary comes from the ratings table; the link only opens the public reviews list. -->
+            <a href="/details/<%= product.id %>/ratings" class="rating" style="margin-top:14px;">
+                <span class="rating-stars" aria-hidden="true">
+                    <% for (let star = 1; star <= 5; star++) { %><span class="<%= star <= Math.round(average) ? 'is-filled' : '' %>">★</span><% } %>
+                </span>
+                <strong><%= average.toFixed(1) %></strong>
+                <span class="count"><%= reviewCount %> verified review<%= reviewCount === 1 ? '' : 's' %></span>
+            </a>
 
             <div class="product-actions-full" style="margin-top:18px;">
                 <button class="btn-outline">&#9825; Add to Wishlist</button>
                 <button class="btn-primary">Add to Cart</button>
-                <button class="btn-secondary">Buy Now</button>
-                <button class="btn-secondary">Reserve Now</button>
-                <button class="btn-outline">Give Rating</button>
-                <button class="btn-report" title="Report this listing">&#9873;</button>
+                <% if (product.status === 'selling' && product.quantity > 0) { %>
+                    <% if (!currentUser) { %>
+                        <a href="/login" class="btn-secondary">Log in to Reserve</a>
+                    <% } else if (currentUser.id === product.seller_id) { %>
+                        <button class="btn-secondary" disabled>Your Product</button>
+                    <% } else { %>
+                        <a href="/reservations/add/<%= product.id %>" class="btn-secondary">Reserve Now</a>
+                    <% } %>
+                <% } else { %>
+                    <button class="btn-secondary" disabled>Unavailable</button>
+                <% } %>
+                <a href="/details/<%= product.id %>/ratings" class="btn-outline">Give Rating</a>
+                <a href="/user_report/<%= product.id %>" class="btn-report" title="Report this listing">&#9873;</a>
             </div>
         </div>
     </div>
