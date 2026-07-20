@@ -53,6 +53,16 @@
             </div>
             <div class="review-actions">
                 <span class="status-badge status-<%= report.status %>" style="position:static; display:inline-block;"><%= report.status %></span>
+
+                <% if (report.status === 'pending') { %>
+                    <div style="margin-top: 10px;">
+                        <a href="/my_reports/<%= report.id %>/edit" class="btn-warning">Edit</a>
+                        <form action="/my_reports/<%= report.id %>/delete" method="POST" style="display:inline"
+                            onsubmit="return confirm('Delete this report?')">
+                            <button type="submit" class="btn-danger">Delete</button>
+                        </form>
+                    </div>
+                <% } %>
             </div>
         </div>
     <% }); %>

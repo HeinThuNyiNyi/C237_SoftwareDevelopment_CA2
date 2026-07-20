@@ -569,6 +569,36 @@ app.get('/my_reports', isLoggedIn, (req, res) => {
     });
 });
 
+// Show edit form (own pending report only)
+app.get('/my_reports/:id/edit', isLoggedIn, (req, res) => {
+    reportModel.getReportById(req.params.id, (error, results) => {
+        if (error || results.length === 0) return res.send('Report not found');
+        const report = results[0];
+        if (report.reporter_id !== req.session.user.id || report.status !== 'pending') {
+            return res.redirect('/my_reports');
+        }
+        res.render('edit_report', { report: report, currentUser: req.session.user });
+    });
+});
+
+// Save edit
+app.post('/my_reports/:id/edit', isLoggedIn, (req, res) => {
+    reportModel.updateReportByReporter(req.params.id, req.session.user.id, req.body.category, req.body.description, (error) => {
+        if (error) return res.send('Error updating report');
+        req.flash('success', 'Report updated.');
+        res.redirect('/my_reports');
+    });
+});
+
+// Delete own report
+app.post('/my_reports/:id/delete', isLoggedIn, (req, res) => {
+    reportModel.deleteReportByReporter(req.params.id, req.session.user.id, (error) => {
+        if (error) return res.send('Error deleting report');
+        req.flash('success', 'Report deleted.');
+        res.redirect('/my_reports');
+    });
+});
+
 // ---------- Admin: review reports ----------
 
 // List of reports, filterable by status (defaults to the ones still needing review)
