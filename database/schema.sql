@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS reservations (
     appointment_date DATE NULL,
     appointment_time TIME NULL,
     meeting_location VARCHAR(255),
-    status ENUM('pending', 'confirmed', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
+    status ENUM('pending', 'proposed', 'confirmed', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_reservation_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
