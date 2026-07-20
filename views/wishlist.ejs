@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Wishlist - CampusCycle</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="brand">
+        <div class="brand-icon">&#9851;</div>
+        <span class="campus">Campus</span><span class="cycle">Cycle</span>
+    </div>
+
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/wishlist" class="active">Wishlist</a>
+        <a href="/cart">Cart 🛒</a>
+        <div class="dropdown">
+            <a href="#">Account</a>
+            <div class="dropdown-menu">
+                <a href="/profile">My Profile</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+        <a href="/sell" class="nav-cta">+ Sell an Item</a>
+    </div>
+</nav>
+
+<main class="page-container">
+    <div class="page-header">
+        <h1>My Wishlist ❤️</h1>
+        <p>Save items you are interested in and buy them anytime.</p>
+    </div>
+
+    <!-- Alert Flash Messages -->
+    <% if (success_msg && success_msg.length > 0) { %>
+        <div class="alert alert-success">
+            <span>✓</span> <%= success_msg %>
+        </div>
+    <% } %>
+
+    <% if (error_msg && error_msg.length > 0) { %>
+        <div class="alert alert-error">
+            <span>⚠️</span> <%= error_msg %>
+        </div>
+    <% } %>
+
+    <% if (wishlistItems && wishlistItems.length > 0) { %>
+        <div class="product-grid">
+            <% wishlistItems.forEach(item => { %>
+                <div class="product-card">
+                    <div class="product-image">
+                        <%= item.image_symbol || '📦' %>
+                        <!-- Remove from Wishlist button -->
+                        <form action="/wishlist/remove/<%= item.product_id %>" method="POST" style="position: absolute; top: 10px; right: 10px;">
+                            <button type="submit" class="wishlist-btn active-wishlist" title="Remove from wishlist">❤️</button>
+                        </form>
+                    </div>
+                    <div class="product-body">
+                        <span class="category-badge"><%= item.category || 'General' %></span>
+                        <h3 class="product-title"><%= item.name %></h3>
+                        <p class="product-price">$<%= Number(item.price).toFixed(2) %></p>
+                        <p class="product-desc"><%= item.description %></p>
+                        
+                        <div class="product-actions" style="margin-top: 14px;">
+                            <form action="/cart/add/<%= item.product_id %>" method="POST" style="flex: 1;">
+                                <button type="submit" class="add-to-cart">Move to Cart 🛒</button>
+                            </form>
+                            <form action="/wishlist/remove/<%= item.product_id %>" method="POST">
+                                <button type="submit" class="report-btn" title="Remove">🗑️</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+    <% } else { %>
+        <!-- Empty State UI -->
+        <div class="empty-state-card">
+            <div class="empty-icon">❤️</div>
+            <h2>Your wishlist is currently empty</h2>
+            <p>You haven't saved any campus items yet. Browse listings and click the heart icon to keep track of items you like!</p>
+            <a href="/" class="btn-primary">Explore Campus Listings</a>
+        </div>
+    <% } %>
+</main>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shopping Cart - CampusCycle</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="brand">
+        <div class="brand-icon">&#9851;</div>
+        <span class="campus">Campus</span><span class="cycle">Cycle</span>
+    </div>
+
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/wishlist">Wishlist ❤️</a>
+        <a href="/cart" class="active">Cart 🛒</a>
+        <div class="dropdown">
+            <a href="#">Account</a>
+            <div class="dropdown-menu">
+                <a href="/profile">My Profile</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+        <a href="/sell" class="nav-cta">+ Sell an Item</a>
+    </div>
+</nav>
+
+<main class="page-container">
+    <div class="page-header">
+        <h1>Your Shopping Cart 🛒</h1>
+        <p>Review items, adjust quantities, and prepare for campus pickup/swap.</p>
+    </div>
+
+    <!-- Alert Flash Messages -->
+    <% if (success_msg && success_msg.length > 0) { %>
+        <div class="alert alert-success">
+            <span>✓</span> <%= success_msg %>
+        </div>
+    <% } %>
+
+    <% if (error_msg && error_msg.length > 0) { %>
+        <div class="alert alert-error">
+            <span>⚠️</span> <%= error_msg %>
+        </div>
+    <% } %>
+
+    <% if (cartItems && cartItems.length > 0) { %>
+        <div class="cart-layout">
+            <!-- Cart Table Items -->
+            <div class="cart-table-wrapper">
+                <table class="cart-table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Unit Price</th>
+                            <th>Quantity</th>
+                            <th>Subtotal</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% cartItems.forEach(item => { %>
+                            <tr>
+                                <td class="cart-product-info">
+                                    <div class="cart-product-icon"><%= item.image_symbol || '📦' %></div>
+                                    <div>
+                                        <div class="cart-product-name"><%= item.name %></div>
+                                        <div class="cart-product-cat"><%= item.category || 'General' %></div>
+                                    </div>
+                                </td>
+                                <td class="price-cell">$<%= Number(item.price).toFixed(2) %></td>
+                                <td>
+                                    <div class="qty-control">
+                                        <!-- Decrease Quantity -->
+                                        <form action="/cart/decrease/<%= item.product_id %>" method="POST">
+                                            <button type="submit" class="qty-btn" title="Decrease quantity">-</button>
+                                        </form>
+
+                                        <span class="qty-val"><%= item.quantity %></span>
+
+                                        <!-- Increase Quantity -->
+                                        <form action="/cart/increase/<%= item.product_id %>" method="POST">
+                                            <button type="submit" class="qty-btn" title="Increase quantity">+</button>
+                                        </form>
+                                    </div>
+                                </td>
+                                <td class="subtotal-cell">$<%= Number(item.subtotal).toFixed(2) %></td>
+                                <td>
+                                    <!-- Remove Item -->
+                                    <form action="/cart/remove/<%= item.product_id %>" method="POST">
+                                        <button type="submit" class="remove-btn" title="Remove item">🗑️ Remove</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Order Summary Panel -->
+            <div class="cart-summary-card">
+                <h2>Order Summary</h2>
+                <div class="summary-row">
+                    <span>Items Subtotal</span>
+                    <span class="summary-val">$<%= totalAmount %></span>
+                </div>
+                <div class="summary-row">
+                    <span>Campus Sustainability Discount</span>
+                    <span class="summary-val green-text">FREE</span>
+                </div>
+                <hr class="summary-divider">
+                <div class="summary-row total-row">
+                    <span>Total Amount</span>
+                    <span class="summary-total">$<%= totalAmount %></span>
+                </div>
+
+                <button class="checkout-btn" onclick="alert('Demo checkout simulated! In full production, this routes to payment gateway.')">Proceed to Checkout 💳</button>
+                <a href="/" class="continue-shopping">← Continue Browsing Items</a>
+            </div>
+        </div>
+    <% } else { %>
+        <!-- Empty Cart State -->
+        <div class="empty-state-card">
+            <div class="empty-icon">🛒</div>
+            <h2>Your shopping cart is empty</h2>
+            <p>Looks like you haven't added any items to your cart yet. Explore available listings on campus and add them to your cart!</p>
+            <a href="/" class="btn-primary">Browse Marketplace</a>
+        </div>
+    <% } %>
+</main>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+
+</body>
+</html>
