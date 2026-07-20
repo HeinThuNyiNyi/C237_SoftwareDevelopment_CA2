@@ -245,14 +245,10 @@ app.post('/admin/products/:id/reject', (req, res) => {
 // ==================== Ei Htet Htet Tun's routes ====================
 // Reporting products & users, and the admin review process that resolves those reports.
 
-// TODO: replace these with req.session.user.id once the login feature is done.
-const TEMP_REPORTER_ID = 1; // seeded normal user account making the report
-const TEMP_ADMIN_ID = 1;    // seeded admin account resolving the report
-
 // ---------- Reporting a product ----------
 
 // Show the "report this product" form
-app.get('/user_report/:productId', (req, res) => {
+app.get('/user_report/:productId', isLoggedIn, (req, res) => {
     const productId = req.params.productId;
     productModel.getProductById(productId, (error, results) => {
         if (error) {
@@ -262,12 +258,12 @@ app.get('/user_report/:productId', (req, res) => {
         if (results.length === 0) {
             return res.status(404).send('Product not found');
         }
-        res.render('user_report', { product: results[0] });
+        res.render('user_report', { product: results[0], currentUser: req.session.user });
     });
 });
 
 // Submit a product report
-app.post('/user_report', upload.single('evidenceImage'), (req, res) => {
+app.post('/user_report', isLoggedIn, upload.single('evidenceImage'), (req, res) => {
     const { reported_product_id, reported_user_id, category, description } = req.body;
 
     let evidenceImage;
@@ -278,7 +274,7 @@ app.post('/user_report', upload.single('evidenceImage'), (req, res) => {
     }
 
     reportModel.createReport({
-        reporterId: TEMP_REPORTER_ID,
+        reporterId: req.session.user.id,
         reportedUserId: reported_user_id,
         reportedProductId: reported_product_id,
         category: category,
@@ -297,9 +293,9 @@ app.post('/user_report', upload.single('evidenceImage'), (req, res) => {
 // ---------- Reporting a user ----------
 
 // Show the "report this user" form
-app.get('/report_user/:userId', (req, res) => {
+app.get('/report_user/:userId', isLoggedIn, (req, res) => {
     const userId = req.params.userId;
-    userModel.getUserById(userId, (error, results) => {
+    userModel.findPublicById(userId, (error, results) => {
         if (error) {
             console.error('Database query error:', error.message);
             return res.send('Error retrieving user');
@@ -307,12 +303,12 @@ app.get('/report_user/:userId', (req, res) => {
         if (results.length === 0) {
             return res.status(404).send('User not found');
         }
-        res.render('report_user', { reportedUser: results[0] });
+        res.render('report_user', { reportedUser: results[0], currentUser: req.session.user });
     });
 });
 
 // Submit a user report
-app.post('/report_user', upload.single('evidenceImage'), (req, res) => {
+app.post('/report_user', isLoggedIn, upload.single('evidenceImage'), (req, res) => {
     const { reported_user_id, category, description } = req.body;
 
     let evidenceImage;
@@ -323,7 +319,7 @@ app.post('/report_user', upload.single('evidenceImage'), (req, res) => {
     }
 
     reportModel.createReport({
-        reporterId: TEMP_REPORTER_ID,
+        reporterId: req.session.user.id,
         reportedUserId: reported_user_id,
         reportedProductId: null,
         category: category,
@@ -342,20 +338,20 @@ app.post('/report_user', upload.single('evidenceImage'), (req, res) => {
 // ---------- Reporter's own report history ----------
 
 // A user's own submitted reports and their current status
-app.get('/my_reports', (req, res) => {
-    reportModel.getReportsByReporter(TEMP_REPORTER_ID, (error, reports) => {
+app.get('/my_reports', isLoggedIn, (req, res) => {
+    reportModel.getReportsByReporter(req.session.user.id, (error, reports) => {
         if (error) {
             console.error('Database query error:', error.message);
             return res.send('Error retrieving your reports');
         }
-        res.render('my_reports', { reports: reports });
+        res.render('my_reports', { reports: reports, currentUser: req.session.user });
     });
 });
 
 // ---------- Admin: review reports ----------
 
 // List of reports, filterable by status (defaults to the ones still needing review)
-app.get('/admin/admin_report', (req, res) => {
+app.get('/admin/admin_report', isAdmin, (req, res) => {
     const status = req.query.status || 'pending';
     reportModel.getAllReports(status, (error, reports) => {
         if (error) {
@@ -377,12 +373,12 @@ app.get('/admin/admin_report', (req, res) => {
 });
 
 // Alias for the "Reports" navbar link
-app.get('/admin/reports', (req, res) => {
+app.get('/admin/reports', isAdmin, (req, res) => {
     res.redirect('/admin/admin_report');
 });
 
 // One report in full - reporter, reported user/product, evidence - with the resolution form
-app.get('/admin/admin_report/:id', (req, res) => {
+app.get('/admin/admin_report/:id', isAdmin, (req, res) => {
     reportModel.getReportById(req.params.id, (error, results) => {
         if (error) {
             console.error('Database query error:', error.message);
@@ -396,7 +392,7 @@ app.get('/admin/admin_report/:id', (req, res) => {
 });
 
 // Admin approves a report - take action against the reported product and/or user
-app.post('/admin/admin_report/:id/approve', (req, res) => {
+app.post('/admin/admin_report/:id/approve', isAdmin, (req, res) => {
     const reportId = req.params.id;
     const { reportedProductId, reportedUserId, action, banDuration, adminNote } = req.body;
 
@@ -412,7 +408,7 @@ app.post('/admin/admin_report/:id/approve', (req, res) => {
     // Step 2: ban the reported user, if that action was chosen
     const banUserIfNeeded = (next) => {
         if ((action === 'ban_user' || action === 'ban_and_remove') && reportedUserId) {
-            userModel.banUser(reportedUserId, banDuration, adminNote || 'Banned following a user report', TEMP_ADMIN_ID, next);
+            userModel.banUser(reportedUserId, banDuration, adminNote || 'Banned following a user report', req.session.user.id, next);
         } else {
             next(null);
         }
@@ -442,7 +438,7 @@ app.post('/admin/admin_report/:id/approve', (req, res) => {
 });
 
 // Admin dismisses a report - no action needed against the product/user
-app.post('/admin/admin_report/:id/dismiss', (req, res) => {
+app.post('/admin/admin_report/:id/dismiss', isAdmin, (req, res) => {
     reportModel.dismissReport(req.params.id, 'Dismissed - no action needed', (error) => {
         if (error) {
             console.error('Error dismissing report:', error.message);
@@ -455,7 +451,7 @@ app.post('/admin/admin_report/:id/dismiss', (req, res) => {
 
 // ---------- Admin: lift a ban early ----------
 
-app.post('/admin/users/:id/unban', (req, res) => {
+app.post('/admin/users/:id/unban', isAdmin, (req, res) => {
     userModel.unbanUser(req.params.id, (error) => {
         if (error) {
             console.error('Error removing ban:', error.message);
