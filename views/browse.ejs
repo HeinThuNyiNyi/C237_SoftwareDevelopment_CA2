@@ -16,9 +16,32 @@
 
     <div class="nav-links">
         <a href="/">Home</a>
-        <a href="/browse">Browse</a>
+
+        <div class="dropdown">
+            <a href="/browse">Browse</a>
+            <div class="dropdown-menu">
+                <% categories.forEach(function(category) { %>
+                    <a href="/browse?category=<%= category.id %>"><%= category.name %></a>
+                <% }); %>
+            </div>
+        </div>
+
         <a href="/wishlist">Wishlist</a>
         <a href="/cart">Cart</a>
+
+        <div class="dropdown">
+            <a href="/profile">Account</a>
+            <div class="dropdown-menu">
+                <a href="/profile">My Profile</a>
+                <a href="/my-listings">My Listings</a>
+                <a href="/purchase-history">Purchase History</a>
+                <a href="/sales-history">Sales History</a>
+                <a href="/reservations">My Reservations</a>
+                <a href="/notifications">Notifications</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+
         <a href="/sell" class="nav-cta">+ Sell an Item</a>
     </div>
 </nav>
@@ -65,7 +88,7 @@
                 <p class="product-title"><%= product.name %></p>
                 <span class="condition-tag"><%= product.condition.replace('_', ' ') %></span>
                 <p class="product-price">$<%= Number(product.price).toFixed(2) %></p>
-                <p class="seller-info"><%= product.categoryName %> &middot; Seller: <%= product.sellerName %></p>
+                <p class="seller-info"><%= product.categoryName %> &middot; Seller: <%= product.sellerName %> &middot; <a href="/users/<%= product.seller_id %>">View Profile</a></p>
 
                 <!-- Rating comes from the ratings table; the link only opens the public reviews list. -->
                 <a href="/details/<%= product.id %>/ratings" class="rating" aria-label="<%= count ? `${average} out of 5 from ${count} reviews` : 'No verified reviews yet' %>">
