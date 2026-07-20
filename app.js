@@ -116,11 +116,47 @@ app.get('/products/:id', (req, res) => {
         if (results.length === 0) {
             return res.status(404).send('Product not found');
         }
-        res.render('productDetails', {
-            product: results[0],
-            currentUser: req.session.user || null,
-            errors: req.flash('error'),
-            success: req.flash('success')
+
+        const product = results[0];
+
+        // ---- Seller bar data (added by Hein Thu Nyi Nyi) ----
+        // Loads the seller's public details and stats for the strip at the
+        // top of the page. If either lookup fails the page still renders,
+        // just without the bar, so a profile problem cannot break a listing.
+        userModel.findPublicById(product.seller_id, (sellerError, sellerResults) => {
+            const seller = (!sellerError && sellerResults.length > 0) ? sellerResults[0] : null;
+
+            userModel.getPublicStats(product.seller_id, (statsError, statsResults) => {
+                const sellerStats = (!statsError && statsResults.length > 0) ? statsResults[0] : null;
+
+                let sellerInfo = null;
+                if (seller && sellerStats) {
+                    const positivePercent = sellerStats.reviewCount > 0
+                        ? Math.round((sellerStats.goodRatings / sellerStats.reviewCount) * 100)
+                        : 0;
+
+                    sellerInfo = {
+                        id: seller.id,
+                        name: seller.name,
+                        initials: getInitials(seller.name),
+                        lastSeen: describeLastSeen(seller.last_active),
+                        membershipLength: describeMembership(seller.created_at),
+                        itemsSold: sellerStats.itemsSold,
+                        reviewCount: sellerStats.reviewCount,
+                        averageRating: sellerStats.averageRating,
+                        positivePercent: positivePercent,
+                        isGoodSeller: sellerStats.reviewCount >= 3 && positivePercent >= 90
+                    };
+                }
+
+                res.render('productDetails', {
+                    product: product,
+                    currentUser: req.session.user || null,
+                    sellerInfo: sellerInfo,
+                    errors: req.flash('error'),
+                    success: req.flash('success')
+                });
+            });
         });
     });
 });

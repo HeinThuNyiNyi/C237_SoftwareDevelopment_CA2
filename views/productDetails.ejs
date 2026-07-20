@@ -23,6 +23,49 @@
     </div>
 </nav>
 
+<!-- ============================================================
+     Seller bar (Hein Thu Nyi Nyi)
+     Sits above the listing so a buyer can see who is selling and open
+     their profile. Hidden if the seller could not be loaded.
+     The "Seller history" button is left inactive for Thiha Aung.
+     ============================================================ -->
+<% if (sellerInfo) { %>
+<div class="sellerbar">
+    <a href="/users/<%= sellerInfo.id %>" class="sellerbar-main">
+        <div class="sellerbar-avatar"><%= sellerInfo.initials %></div>
+
+        <div class="sellerbar-info">
+            <div class="sellerbar-name-row">
+                <span class="sellerbar-name"><%= sellerInfo.name %></span>
+                <% if (sellerInfo.isGoodSeller) { %>
+                    <span class="sellerbar-badge">Highly rated seller</span>
+                <% } %>
+            </div>
+
+            <div class="sellerbar-meta">
+                <span><%= sellerInfo.lastSeen %></span>
+                <span class="sellerbar-sep">|</span>
+                <span>Member for <%= sellerInfo.membershipLength %></span>
+                <span class="sellerbar-sep">|</span>
+                <span><%= sellerInfo.itemsSold %> sold</span>
+                <% if (sellerInfo.reviewCount > 0) { %>
+                    <span class="sellerbar-sep">|</span>
+                    <span><%= sellerInfo.positivePercent %>% positive</span>
+                <% } else { %>
+                    <span class="sellerbar-sep">|</span>
+                    <span>No reviews yet</span>
+                <% } %>
+            </div>
+        </div>
+    </a>
+
+    <div class="sellerbar-actions">
+        <a href="/users/<%= sellerInfo.id %>" class="sellerbar-btn">View profile</a>
+        <button class="sellerbar-btn" disabled>Seller history</button>
+    </div>
+</div>
+<% } %>
+
 <div class="admin-section">
     <% if (errors && errors.length > 0) { %>
         <div class="alert alert-error"><%= errors[0] %></div>
