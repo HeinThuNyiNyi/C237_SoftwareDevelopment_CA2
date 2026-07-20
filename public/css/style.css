@@ -341,6 +341,10 @@ body {
 }
 
 .btn-report {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
     border: 1px solid var(--border);
     background: #fff;
     color: var(--muted);
@@ -444,3 +448,6 @@ body {
 .user-row .user-name { font-weight: 600; }
 .user-row .user-email { font-size: 12px; color: var(--muted); }
 .user-row .user-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* ===== Report status (reports.status: pending / approved / rejected) ===== */
+.status-approved { background: #1565c0; }

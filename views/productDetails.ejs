@@ -36,7 +36,7 @@
 
             <p class="review-meta">Category: <%= product.categoryName %></p>
             <p class="review-meta">Quantity available: <%= product.quantity %></p>
-            <p class="review-meta">Seller: <%= product.sellerName %></p>
+            <p class="review-meta">Seller: <%= product.sellerName %> &middot; <a href="/report_user/<%= product.seller_id %>">Report Seller</a></p>
             <p class="review-meta">Contact: <%= product.contact_info %></p>
 
             <p style="margin-top:14px;"><%= product.description %></p>
@@ -49,7 +49,7 @@
                 <button class="btn-secondary">Buy Now</button>
                 <button class="btn-secondary">Reserve Now</button>
                 <button class="btn-outline">Give Rating</button>
-                <button class="btn-report" title="Report this listing">&#9873;</button>
+                <a href="/user_report/<%= product.id %>" class="btn-report" title="Report this listing">&#9873;</a>
             </div>
         </div>
     </div>
