@@ -53,6 +53,7 @@
     <div class="sellerbar-actions">
         <a href="/users/<%= sellerInfo.id %>" class="sellerbar-btn">View profile</a>
         <button class="sellerbar-btn" disabled>Seller history</button>
+        <a href="/report_user/<%= sellerInfo.id %>" class="sellerbar-btn">Report seller</a>
     </div>
 </div>
 <% } %>
@@ -109,7 +110,7 @@
                     <button class="btn-secondary" disabled>Unavailable</button>
                 <% } %>
                 <a href="/details/<%= product.id %>/ratings" class="btn-outline">Give Rating</a>
-                <a href="/user_report/<%= product.id %>" class="btn-report" title="Report this listing">&#9873;</a>
+                <a href="/report_user/<%= product.seller_id %>" class="btn-report" title="Report Seller">&#9873;</a>
             </div>
         </div>
     </div>

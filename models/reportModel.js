@@ -85,11 +85,27 @@ function dismissReport(reportId, adminAction, callback) {
     db.query(sql, [adminAction, reportId], callback);
 }
 
+// A reporter edits their own still-pending report.
+function updateReportByReporter(reportId, reporterId, category, description, callback) {
+    const sql = `UPDATE reports SET category = ?, description = ?
+                 WHERE id = ? AND reporter_id = ? AND status = 'pending'`;
+    db.query(sql, [category, description, reportId, reporterId], callback);
+}
+
+// A reporter deletes their own still-pending report.
+function deleteReportByReporter(reportId, reporterId, callback) {
+    const sql = `DELETE FROM reports
+                 WHERE id = ? AND reporter_id = ? AND status = 'pending'`;
+    db.query(sql, [reportId, reporterId], callback);
+}
+
 module.exports = {
     createReport,
     getAllReports,
     getReportById,
     getReportsByReporter,
     approveReport,
-    dismissReport
+    dismissReport,
+    updateReportByReporter,
+    deleteReportByReporter
 };

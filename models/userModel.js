@@ -1,5 +1,40 @@
 const db = require('../config/db');
 
+// Looking up a reported user and banning/unbanning an account after a
+// report has been reviewed. (Ei Htet Htet Tun's part)
+
+// Basic public info for a user, used on the "report this user" form
+// and on the admin report review page.
+function getUserById(userId, callback) {
+    const sql = 'SELECT id, name, email, phone, role, is_banned, banned_until FROM users WHERE id = ?';
+    db.query(sql, [userId], callback);
+}
+
+// Ban a user for a number of days, or permanently when days === 'permanent'.
+function banUser(userId, days, reason, bannedBy, callback) {
+    if (days === 'permanent') {
+        const sql = 'UPDATE users SET is_banned = 1, banned_until = NULL, ban_reason = ?, banned_by = ? WHERE id = ?';
+        db.query(sql, [reason, bannedBy, userId], callback);
+    } else {
+        const sql = 'UPDATE users SET is_banned = 1, banned_until = DATE_ADD(NOW(), INTERVAL ? DAY), ban_reason = ?, banned_by = ? WHERE id = ?';
+        db.query(sql, [days, reason, bannedBy, userId], callback);
+    }
+}
+
+// Lift a ban before it expires.
+function unbanUser(userId, callback) {
+    const sql = 'UPDATE users SET is_banned = 0, banned_until = NULL, ban_reason = NULL, banned_by = NULL WHERE id = ?';
+    db.query(sql, [userId], callback);
+}
+
+// All currently banned users, shown on the admin report panel.
+function getBannedUsers(callback) {
+    const sql = `SELECT id, name, email, banned_until, ban_reason FROM users
+                 WHERE is_banned = 1
+                 ORDER BY banned_until IS NULL DESC, banned_until ASC`;
+    db.query(sql, callback);
+}
+
 // Find one user by their school email. Used by the login route.
 // Returns an array (mysql2 always does) - the route checks results.length.
 function findByEmail(email, callback) {
@@ -7,7 +42,8 @@ function findByEmail(email, callback) {
     db.query(sql, [email], callback);
 }
 
-// Find one user by id. Used by the profile pages.
+// Find one user by id. Used by the "My Account" page, where it is safe to
+// show the person their own email and phone number.
 function findById(id, callback) {
     const sql = 'SELECT * FROM users WHERE id = ?';
     db.query(sql, [id], callback);
@@ -60,55 +96,20 @@ function getPublicStats(id, callback) {
     db.query(sql, [id, id, id, id, id], callback);
 }
 
-// Looking up a reported user and banning/unbanning an account after a
-// report has been reviewed. (Ei Htet Htet Tun's part)
-
-// Basic public info for a user, used on the "report this user" form
-// and on the admin report review page.
-function getUserById(userId, callback) {
-    const sql = 'SELECT id, name, email, phone, role, is_banned, banned_until FROM users WHERE id = ?';
-    db.query(sql, [userId], callback);
-}
-
-// Ban a user for a number of days, or permanently when days === 'permanent'.
-function banUser(userId, days, reason, bannedBy, callback) {
-    if (days === 'permanent') {
-        const sql = 'UPDATE users SET is_banned = 1, banned_until = NULL, ban_reason = ?, banned_by = ? WHERE id = ?';
-        db.query(sql, [reason, bannedBy, userId], callback);
-    } else {
-        const sql = 'UPDATE users SET is_banned = 1, banned_until = DATE_ADD(NOW(), INTERVAL ? DAY), ban_reason = ?, banned_by = ? WHERE id = ?';
-        db.query(sql, [days, reason, bannedBy, userId], callback);
-    }
-}
-
-// Lift a ban before it expires.
-function unbanUser(userId, callback) {
-    const sql = 'UPDATE users SET is_banned = 0, banned_until = NULL, ban_reason = NULL, banned_by = NULL WHERE id = ?';
-    db.query(sql, [userId], callback);
-}
-
-// All currently banned users, shown on the admin report panel.
-function getBannedUsers(callback) {
-    const sql = `SELECT id, name, email, banned_until, ban_reason FROM users
-                 WHERE is_banned = 1
-                 ORDER BY banned_until IS NULL DESC, banned_until ASC`;
-    db.query(sql, callback);
-}
-
 // Total number of registered users, for the admin dashboard stat card.
 function countAllUsers(callback) {
     db.query('SELECT COUNT(*) AS total FROM users', callback);
 }
 
 module.exports = {
+    getUserById,
+    banUser,
+    unbanUser,
+    getBannedUsers,
     findByEmail,
     findById,
     touchLastActive,
     findPublicById,
     getPublicStats,
-    getUserById,
-    banUser,
-    unbanUser,
-    getBannedUsers,
     countAllUsers
 };

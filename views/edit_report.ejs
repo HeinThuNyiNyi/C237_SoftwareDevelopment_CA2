@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Report - CampusCycle</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="brand">
+        <div class="brand-icon">&#9851;</div>
+        <span class="campus">Campus</span><span class="cycle">Cycle</span>
+    </div>
+
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/browse">Browse</a>
+        <a href="/my_reports">My Reports</a>
+    </div>
+</nav>
+
+<section class="hero">
+    <h1>Edit Report</h1>
+    <p>Update the reason or description while this report is still pending.</p>
+</section>
+
+<div class="admin-section">
+    <div class="review-card">
+        <div class="review-thumb">&#128100;</div>
+        <div class="review-body">
+            <h4>
+                <% if (report.reportedUserName) { %>
+                    You are reporting: <%= report.reportedUserName %>
+                <% } else if (report.reportedProductName) { %>
+                    You are reporting listing: <%= report.reportedProductName %>
+                <% } else { %>
+                    Report #<%= report.id %>
+                <% } %>
+            </h4>
+            <p class="review-meta">Report #<%= report.id %> &middot; Submitted <%= new Date(report.created_at).toLocaleDateString() %></p>
+        </div>
+    </div>
+
+    <div class="review-card" style="display:block;">
+        <form action="/my_reports/<%= report.id %>/edit" method="POST">
+            <div style="margin-bottom:14px;">
+                <label for="category">Reason</label><br>
+                <select name="category" id="category" class="ban-select" required>
+                    <option value="scam" <%= report.category === 'scam' ? 'selected' : '' %>>Scam / fraud</option>
+                    <option value="harassment" <%= report.category === 'harassment' ? 'selected' : '' %>>Harassment / abusive behaviour</option>
+                    <option value="no_show" <%= report.category === 'no_show' ? 'selected' : '' %>>Did not show up for appointment</option>
+                    <option value="fake_account" <%= report.category === 'fake_account' ? 'selected' : '' %>>Suspicious / fake account</option>
+                    <option value="other" <%= report.category === 'other' ? 'selected' : '' %>>Other</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:14px;">
+                <label for="description">Description</label><br>
+                <textarea name="description" id="description" class="reason-input" rows="4" required><%= report.description %></textarea>
+            </div>
+
+            <button type="submit" class="btn-primary">Save</button>
+            <a href="/my_reports" class="btn-outline">Cancel</a>
+        </form>
+    </div>
+</div>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+
+</body>
+</html>
