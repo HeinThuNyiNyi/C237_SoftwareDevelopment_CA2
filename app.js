@@ -210,6 +210,60 @@ app.post('/admin/products/:id/reject', (req, res) => {
 
 // ==================== Hein Thu Nyi Nyi's routes ====================
 
+// ---- Small display helpers used by the profile pages ----
+
+// "Hein Thu Nyi Nyi" -> "HT". Used for the circle avatar.
+function getInitials(name) {
+    return name
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map(word => word.charAt(0).toUpperCase())
+        .join('');
+}
+
+// Turns last_active into "Active 3 hours ago". NULL means they have never
+// logged in, which is possible because accounts are created by the school.
+function describeLastSeen(lastActive) {
+    if (!lastActive) {
+        return 'New member';
+    }
+
+    const minutes = Math.floor((Date.now() - new Date(lastActive).getTime()) / 60000);
+
+    if (minutes < 1)      return 'Active now';
+    if (minutes < 60)     return 'Active ' + minutes + ' minute' + (minutes === 1 ? '' : 's') + ' ago';
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24)       return 'Active ' + hours + ' hour' + (hours === 1 ? '' : 's') + ' ago';
+
+    const days = Math.floor(hours / 24);
+    if (days < 30)        return 'Active ' + days + ' day' + (days === 1 ? '' : 's') + ' ago';
+
+    const months = Math.floor(days / 30);
+    if (months < 12)      return 'Active ' + months + ' month' + (months === 1 ? '' : 's') + ' ago';
+
+    return 'Active over a year ago';
+}
+
+// Turns created_at into "8 months" / "2 years" for the "Member for" line.
+function describeMembership(createdAt) {
+    if (!createdAt) {
+        return 'a while';
+    }
+
+    const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000);
+
+    if (days < 1)   return 'less than a day';
+    if (days < 30)  return days + ' day' + (days === 1 ? '' : 's');
+
+    const months = Math.floor(days / 30);
+    if (months < 12) return months + ' month' + (months === 1 ? '' : 's');
+
+    const years = Math.floor(months / 12);
+    return years + ' year' + (years === 1 ? '' : 's');
+}
+
 // Show the login page. isGuest sends people who are already logged in
 // straight to their home page instead of showing the form again.
 app.get('/login', isGuest, (req, res) => {
@@ -270,6 +324,15 @@ app.post('/login', validateLogin, (req, res) => {
                 }
             }
 
+            // Record the sign-in time for the "Last seen" line on public
+            // profiles. If it fails the login still goes ahead - it is only
+            // a display detail, so it must not block anyone getting in.
+            userModel.touchLastActive(user.id, (touchError) => {
+                if (touchError) {
+                    console.error('Could not update last_active:', touchError.message);
+                }
+            });
+
             // Store only what the pages actually need - never the password hash.
             req.session.user = {
                 id: user.id,
@@ -329,6 +392,70 @@ app.get('/profile', isLoggedIn, (req, res) => {
                 username: username,
                 initials: initials,
                 memberSince: memberSince
+            });
+        });
+    });
+});
+
+// Public profile of any member, e.g. /users/12
+//
+// This is the page a buyer lands on when they click a seller's name, and the
+// same page a seller lands on when they click a buyer's name - it is one page
+// used in both directions, the viewer just changes.
+app.get('/users/:id', isLoggedIn, (req, res) => {
+    const profileId = req.params.id;
+
+    // Reject anything that is not a number before it reaches the database.
+    if (!/^\d+$/.test(profileId)) {
+        return res.status(404).send('Error: Member not found.');
+    }
+
+    // findPublicById only selects the safe columns - no password, email,
+    // phone or ban reason - because anyone logged in can view this page.
+    userModel.findPublicById(profileId, (error, results) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving member profile');
+        }
+
+        if (results.length === 0) {
+            return res.status(404).send('Error: Member not found.');
+        }
+
+        const profile = results[0];
+
+        userModel.getPublicStats(profileId, (statsError, statsResults) => {
+            if (statsError) {
+                console.error('Database query error:', statsError.message);
+                return res.send('Error retrieving member statistics');
+            }
+
+            const stats = statsResults[0];
+
+            categoryModel.getAllCategories((catError, categories) => {
+                if (catError) {
+                    console.error('Database query error:', catError.message);
+                    return res.send('Error retrieving categories');
+                }
+
+                // Percentage of reviews that were 4 stars or better.
+                const positivePercent = stats.reviewCount > 0
+                    ? Math.round((stats.goodRatings / stats.reviewCount) * 100)
+                    : 0;
+
+                res.render('publicProfile', {
+                    profile: profile,
+                    stats: stats,
+                    categories: categories,
+                    username: profile.name.trim().toLowerCase().replace(/\s+/g, '.'),
+                    initials: getInitials(profile.name),
+                    firstName: profile.name.trim().split(/\s+/)[0],
+                    lastSeen: describeLastSeen(profile.last_active),
+                    membershipLength: describeMembership(profile.created_at),
+                    positivePercent: positivePercent,
+                    isGoodSeller: stats.reviewCount >= 3 && positivePercent >= 90,
+                    isMe: req.session.user.id === profile.id
+                });
             });
         });
     });

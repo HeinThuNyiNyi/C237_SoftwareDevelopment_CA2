@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
     ban_reason VARCHAR(255) NULL,
     banned_by INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_active DATETIME NULL,  -- updated by the login route on every sign in
     CONSTRAINT fk_users_banned_by FOREIGN KEY (banned_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
