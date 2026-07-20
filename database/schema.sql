@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
     ban_reason VARCHAR(255) NULL,
     banned_by INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_active DATETIME NULL,  -- updated by the login route on every sign in
     CONSTRAINT fk_users_banned_by FOREIGN KEY (banned_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -93,7 +94,7 @@ CREATE TABLE IF NOT EXISTS reservations (
     appointment_date DATE NULL,
     appointment_time TIME NULL,
     meeting_location VARCHAR(255),
-    status ENUM('pending', 'confirmed', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
+    status ENUM('pending', 'proposed', 'confirmed', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_reservation_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,

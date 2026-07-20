@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Account &mdash; CampusCycle</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="brand">
+        <div class="brand-icon">&#9851;</div>
+        <span class="campus">Campus</span><span class="cycle">Cycle</span>
+    </div>
+
+    <div class="nav-links">
+        <a href="/">Home</a>
+
+        <div class="dropdown">
+            <a href="/browse">Browse</a>
+            <div class="dropdown-menu">
+                <% categories.forEach(function(category) { %>
+                    <a href="/browse?category=<%= category.id %>"><%= category.name %></a>
+                <% }); %>
+            </div>
+        </div>
+
+        <a href="/wishlist">Wishlist</a>
+        <a href="/cart">Cart</a>
+
+        <div class="dropdown">
+            <a href="/profile">Account</a>
+            <div class="dropdown-menu">
+                <a href="/profile">My Profile</a>
+                <a href="/my-listings">My Listings</a>
+                <a href="/purchase-history">Purchase History</a>
+                <a href="/sales-history">Sales History</a>
+                <a href="/reservations">My Reservations</a>
+                <a href="/notifications">Notifications</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+
+        <a href="/sell" class="nav-cta">+ Sell an Item</a>
+    </div>
+</nav>
+
+
+<div class="profile-layout">
+
+    <!-- ============ Left sidebar ============ -->
+    <!-- Only "My account" is a real page. Everything else is a placeholder
+         for the other team members to point at their own pages later. -->
+    <aside class="profile-sidebar">
+
+        <a href="/profile" class="profile-side-item profile-side-active">
+            <span class="profile-side-icon">&#128100;</span> My account
+        </a>
+
+        <p class="profile-side-heading">Selling</p>
+        <span class="profile-side-item profile-side-disabled">
+            <span class="profile-side-icon">&#9776;</span> My listings
+        </span>
+        <span class="profile-side-item profile-side-disabled">
+            <span class="profile-side-icon">&#127991;</span> My sales
+        </span>
+        <span class="profile-side-item profile-side-disabled">
+            <span class="profile-side-icon">&#128722;</span> My purchases
+        </span>
+
+        <p class="profile-side-heading">Manage</p>
+        <span class="profile-side-item profile-side-disabled">
+            <span class="profile-side-icon">&#9825;</span> Wishlist
+        </span>
+        <span class="profile-side-item profile-side-disabled">
+            <span class="profile-side-icon">&#128197;</span> Reservations
+        </span>
+        <span class="profile-side-item profile-side-disabled">
+            <span class="profile-side-icon">&#9733;</span> Reviews &amp; ratings
+        </span>
+        <span class="profile-side-item profile-side-disabled">
+            <span class="profile-side-icon">&#9873;</span> My reports
+        </span>
+
+        <p class="profile-side-heading">Account</p>
+        <span class="profile-side-item profile-side-disabled">
+            <span class="profile-side-icon">&#128276;</span> Notifications
+        </span>
+        <span class="profile-side-item profile-side-disabled">
+            <span class="profile-side-icon">&#128172;</span> Chats
+        </span>
+        <a href="/logout" class="profile-side-item">
+            <span class="profile-side-icon">&#8617;</span> Log out
+        </a>
+
+    </aside>
+
+
+    <!-- ============ Main column ============ -->
+    <main class="profile-main">
+
+        <!-- ---- Profile header ---- -->
+        <div class="profile-card profile-header">
+            <div class="profile-avatar"><%= initials %></div>
+
+            <div class="profile-identity">
+                <div class="profile-name-row">
+                    <h2 class="profile-username">@<%= username %></h2>
+
+                    <% if (user.role === 'admin') { %>
+                        <span class="profile-badge profile-badge-admin">Administrator</span>
+                    <% } else { %>
+                        <span class="profile-badge">Student</span>
+                    <% } %>
+                </div>
+
+                <p class="profile-realname"><%= user.name %></p>
+
+                <!-- Static: the ratings team will fill this in from the ratings table -->
+                <p class="profile-rating">
+                    <span class="profile-star">&#9733;</span> 0.0 (0 reviews)
+                </p>
+            </div>
+
+            <div class="profile-header-actions">
+                <button class="btn-outline" disabled>View public profile</button>
+            </div>
+        </div>
+
+        <!-- ---- Notice banners ---- -->
+        <div class="profile-card profile-notice">
+            <div>
+                <p class="profile-notice-title">Verify your mobile number</p>
+                <p class="profile-notice-text">Verified sellers get more responses from buyers on campus.</p>
+                <span class="profile-notice-link">Verify mobile number</span>
+            </div>
+            <span class="profile-notice-emoji">&#128241;</span>
+        </div>
+
+        <div class="profile-card profile-notice">
+            <div>
+                <p class="profile-notice-title">Meet safely on campus</p>
+                <p class="profile-notice-text">Always arrange meet-ups in public areas around RP.</p>
+                <span class="profile-notice-link">Read safety tips</span>
+            </div>
+            <span class="profile-notice-emoji">&#128737;</span>
+        </div>
+
+        <!-- ---- Account details (real data from the users table) ---- -->
+        <div class="profile-card">
+            <div class="profile-card-head">
+                <h3>Account Details</h3>
+                <span class="profile-readonly-tag">&#128274; Read only</span>
+            </div>
+
+            <!-- Details are managed by the school. Students cannot edit their
+                 own information, the same way they cannot create their own account. -->
+            <p class="profile-readonly-note">
+                Your personal details are managed by the school.
+                To update any of the information below, please contact the school administrator.
+            </p>
+
+            <div class="profile-detail-row">
+                <span class="profile-detail-label">Full Name</span>
+                <span class="profile-detail-value"><%= user.name %></span>
+            </div>
+
+            <div class="profile-detail-row">
+                <span class="profile-detail-label">School Email</span>
+                <span class="profile-detail-value"><%= user.email %></span>
+            </div>
+
+            <div class="profile-detail-row">
+                <span class="profile-detail-label">Contact Number</span>
+                <span class="profile-detail-value">
+                    <% if (user.phone) { %>
+                        <%= user.phone %>
+                    <% } else { %>
+                        <span class="profile-empty">Not added yet</span>
+                    <% } %>
+                </span>
+            </div>
+
+            <div class="profile-detail-row">
+                <span class="profile-detail-label">Account Type</span>
+                <span class="profile-detail-value"><%= user.role === 'admin' ? 'Administrator' : 'Student' %></span>
+            </div>
+
+            <div class="profile-detail-row">
+                <span class="profile-detail-label">Account Status</span>
+                <span class="profile-detail-value">
+                    <% if (user.is_banned) { %>
+                        <span class="profile-status-banned">Suspended</span>
+                    <% } else { %>
+                        <span class="profile-status-active">Active</span>
+                    <% } %>
+                </span>
+            </div>
+
+            <div class="profile-detail-row">
+                <span class="profile-detail-label">Member Since</span>
+                <span class="profile-detail-value"><%= memberSince %></span>
+            </div>
+        </div>
+
+        <!-- ---- My listings (static - product team owns this) ---- -->
+        <div class="profile-card">
+            <div class="profile-card-head">
+                <h3>My Listings</h3>
+                <span class="profile-card-count">0 listings &rsaquo;</span>
+            </div>
+            <p class="profile-placeholder">
+                Your listings will appear here once the listings page is connected.
+            </p>
+        </div>
+
+        <!-- ---- Recent activity (static) ---- -->
+        <div class="profile-card">
+            <div class="profile-card-head">
+                <h3>Recent Activity</h3>
+            </div>
+            <p class="profile-placeholder">
+                Purchases, reservations and reviews will appear here.
+            </p>
+        </div>
+
+    </main>
+
+</div>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+
+</body>
+</html>

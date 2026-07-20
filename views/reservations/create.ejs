@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reserve <%= product.name %> - CampusCycle</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+    <div class="brand">
+        <div class="brand-icon">&#9851;</div>
+        <span class="campus">Campus</span><span class="cycle">Cycle</span>
+    </div>
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/browse">Browse</a>
+        <a href="/reservations">My Reservations</a>
+    </div>
+</nav>
+
+<main class="reservation-page">
+    <a href="/products/<%= product.id %>" class="back-link">&larr; Back to product</a>
+
+    <section class="reservation-form-card">
+        <h1>Request a Reservation</h1>
+        <p class="reservation-help">Propose a meeting appointment to <strong><%= product.sellerName %></strong>. The seller can confirm it or suggest another appointment.</p>
+
+        <% if (errors && errors.length > 0) { %>
+            <div class="alert alert-error"><%= errors[0] %></div>
+        <% } %>
+
+        <div class="reservation-product-summary">
+            <% if (product.image) { %>
+                <img src="/images/<%= product.image %>" alt="<%= product.name %>">
+            <% } %>
+            <div>
+                <h2><%= product.name %></h2>
+                <p>$<%= Number(product.price).toFixed(2) %> &middot; One unit per reservation</p>
+            </div>
+        </div>
+
+        <form action="/reservations/add/<%= product.id %>" method="POST" class="reservation-form">
+            <label for="appointmentDate">Preferred date</label>
+            <input id="appointmentDate" name="appointmentDate" type="date" required>
+
+            <label for="appointmentTime">Preferred time</label>
+            <input id="appointmentTime" name="appointmentTime" type="time" required>
+
+            <label for="meetingLocation">Meeting location</label>
+            <input id="meetingLocation" name="meetingLocation" type="text" maxlength="255"
+                   placeholder="Example: Campus library entrance" required>
+
+            <div class="reservation-actions">
+                <button type="submit" class="btn-primary">Send Reservation Request</button>
+                <a href="/products/<%= product.id %>" class="btn-outline">Cancel</a>
+            </div>
+        </form>
+    </section>
+</main>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+</body>
+</html>

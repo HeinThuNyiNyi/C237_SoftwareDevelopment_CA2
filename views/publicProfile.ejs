@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><%= profile.name %> &mdash; CampusCycle</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="brand">
+        <div class="brand-icon">&#9851;</div>
+        <span class="campus">Campus</span><span class="cycle">Cycle</span>
+    </div>
+
+    <div class="nav-links">
+        <a href="/">Home</a>
+
+        <div class="dropdown">
+            <a href="/browse">Browse</a>
+            <div class="dropdown-menu">
+                <% categories.forEach(function(category) { %>
+                    <a href="/browse?category=<%= category.id %>"><%= category.name %></a>
+                <% }); %>
+            </div>
+        </div>
+
+        <a href="/wishlist">Wishlist</a>
+        <a href="/cart">Cart</a>
+
+        <div class="dropdown">
+            <a href="/profile">Account</a>
+            <div class="dropdown-menu">
+                <a href="/profile">My Profile</a>
+                <a href="/my-listings">My Listings</a>
+                <a href="/purchase-history">Purchase History</a>
+                <a href="/sales-history">Sales History</a>
+                <a href="/reservations">My Reservations</a>
+                <a href="/notifications">Notifications</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+
+        <a href="/sell" class="nav-cta">+ Sell an Item</a>
+    </div>
+</nav>
+
+
+<div class="pubprof-wrap">
+
+    <!-- ===== Main profile strip ===== -->
+    <div class="pubprof-card">
+
+        <div class="pubprof-top">
+            <div class="pubprof-avatar"><%= initials %></div>
+
+            <div class="pubprof-identity">
+                <div class="pubprof-name-row">
+                    <h2 class="pubprof-name"><%= profile.name %></h2>
+
+                    <% if (profile.role === 'admin') { %>
+                        <span class="pubprof-badge pubprof-badge-admin">Administrator</span>
+                    <% } %>
+
+                    <% if (isGoodSeller) { %>
+                        <span class="pubprof-badge pubprof-badge-good">Highly rated seller</span>
+                    <% } %>
+
+                    <% if (isMe) { %>
+                        <span class="pubprof-badge">This is you</span>
+                    <% } %>
+                </div>
+
+                <p class="pubprof-handle">@<%= username %></p>
+
+                <!-- Meta line, same idea as the seller strip on other marketplaces -->
+                <p class="pubprof-meta">
+                    <span><%= lastSeen %></span>
+                    <span class="pubprof-dot">&middot;</span>
+                    <span>Member for <%= membershipLength %></span>
+                    <span class="pubprof-dot">&middot;</span>
+                    <span><%= stats.itemsSold %> sold</span>
+                    <% if (stats.reviewCount > 0) { %>
+                        <span class="pubprof-dot">&middot;</span>
+                        <span><%= positivePercent %>% positive</span>
+                    <% } %>
+                </p>
+            </div>
+
+            <div class="pubprof-rating-box">
+                <div class="pubprof-rating-value">
+                    <span class="pubprof-star">&#9733;</span>
+                    <%= stats.averageRating === null ? '0.0' : stats.averageRating %>
+                </div>
+                <div class="pubprof-rating-count">
+                    <%= stats.reviewCount %> review<%= stats.reviewCount === 1 ? '' : 's' %>
+                </div>
+            </div>
+        </div>
+
+        <% if (profile.is_banned) { %>
+            <div class="pubprof-warning">
+                &#9888; This account is currently suspended by an administrator.
+            </div>
+        <% } %>
+
+        <!-- ===== Stats row ===== -->
+        <div class="pubprof-stats">
+            <div class="pubprof-stat">
+                <div class="pubprof-stat-value"><%= stats.activeListings %></div>
+                <div class="pubprof-stat-label">Active Listings</div>
+            </div>
+            <div class="pubprof-stat">
+                <div class="pubprof-stat-value"><%= stats.itemsSold %></div>
+                <div class="pubprof-stat-label">Items Sold</div>
+            </div>
+            <div class="pubprof-stat">
+                <div class="pubprof-stat-value"><%= stats.reviewCount %></div>
+                <div class="pubprof-stat-label">Reviews</div>
+            </div>
+            <div class="pubprof-stat">
+                <div class="pubprof-stat-value">
+                    <%= stats.reviewCount > 0 ? positivePercent + '%' : '--' %>
+                </div>
+                <div class="pubprof-stat-label">Positive Rating</div>
+            </div>
+        </div>
+
+        <!-- Contact / chat belongs to the chat feature, so it stays inactive -->
+        <div class="pubprof-actions">
+            <% if (!isMe) { %>
+                <button class="btn-primary" disabled>Chat with <%= firstName %></button>
+                <button class="btn-outline" disabled>Report this user</button>
+            <% } else { %>
+                <a href="/profile" class="btn-outline pubprof-link-btn">Go to My Account</a>
+            <% } %>
+        </div>
+
+    </div>
+
+    <!-- ===== Their listings (product team owns this) ===== -->
+    <div class="pubprof-card">
+        <div class="pubprof-section-head">
+            <h3>Listings by <%= firstName %></h3>
+        </div>
+        <p class="pubprof-placeholder">
+            This member's listings will appear here once the listings page is connected.
+        </p>
+    </div>
+
+    <!-- ===== Their reviews (ratings team owns this) ===== -->
+    <div class="pubprof-card">
+        <div class="pubprof-section-head">
+            <h3>Reviews</h3>
+        </div>
+        <% if (stats.reviewCount === 0) { %>
+            <p class="pubprof-placeholder">No reviews yet.</p>
+        <% } else { %>
+            <p class="pubprof-placeholder">
+                <%= stats.reviewCount %> review<%= stats.reviewCount === 1 ? '' : 's' %> received.
+                Individual reviews will appear here once the reviews page is connected.
+            </p>
+        <% } %>
+    </div>
+
+</div>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+
+</body>
+</html>

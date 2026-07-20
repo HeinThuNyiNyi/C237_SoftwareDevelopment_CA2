@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservation Details - CampusCycle</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+    <div class="brand">
+        <div class="brand-icon">&#9851;</div>
+        <span class="campus">Campus</span><span class="cycle">Cycle</span>
+    </div>
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/browse">Browse</a>
+        <a href="/reservations">My Reservations</a>
+    </div>
+</nav>
+
+<main class="reservation-page">
+    <a href="/reservations" class="back-link">&larr; Back to reservations</a>
+
+    <% if (errors && errors.length > 0) { %>
+        <div class="alert alert-error"><%= errors[0] %></div>
+    <% } %>
+    <% if (success && success.length > 0) { %>
+        <div class="alert alert-success"><%= success[0] %></div>
+    <% } %>
+
+    <% const isBuyer = reservation.buyer_id === currentUser.id; %>
+    <% const isSeller = reservation.seller_id === currentUser.id; %>
+
+    <section class="reservation-detail-card">
+        <div class="reservation-card-top">
+            <div>
+                <p class="reservation-label">Reservation #<%= reservation.id %></p>
+                <h1><%= reservation.product_name %></h1>
+            </div>
+            <span class="reservation-status status-<%= reservation.status %>"><%= reservation.status %></span>
+        </div>
+
+        <div class="reservation-detail-grid">
+            <div><span>Buyer</span><strong><%= reservation.buyer_name %></strong></div>
+            <div><span>Seller</span><strong><%= reservation.seller_name %></strong></div>
+            <div><span>Appointment date</span><strong><%= reservation.appointment_date ? new Date(reservation.appointment_date).toLocaleDateString('en-SG') : 'Not set' %></strong></div>
+            <div><span>Appointment time</span><strong><%= reservation.appointment_time ? String(reservation.appointment_time).slice(0, 5) : 'Not set' %></strong></div>
+            <div class="reservation-location"><span>Meeting location</span><strong><%= reservation.meeting_location || 'Not set' %></strong></div>
+        </div>
+
+        <% if (isBuyer && ['pending', 'proposed'].includes(reservation.status)) { %>
+            <div class="reservation-action-panel">
+                <h2><%= reservation.status === 'proposed' ? 'Seller proposed this appointment' : 'Your request is awaiting the seller' %></h2>
+                <div class="reservation-actions">
+                    <% if (reservation.status === 'proposed') { %>
+                        <form action="/reservations/<%= reservation.id %>/accept" method="POST">
+                            <button type="submit" class="btn-primary">Accept Proposal</button>
+                        </form>
+                    <% } %>
+                    <a href="/reservations/<%= reservation.id %>/edit" class="btn-outline"><%= reservation.status === 'proposed' ? 'Request Different Time' : 'Edit Request' %></a>
+                    <form action="/reservations/<%= reservation.id %>/cancel" method="POST">
+                        <button type="submit" class="btn-outline">Cancel Reservation</button>
+                    </form>
+                    <% if (reservation.status === 'pending') { %>
+                        <form action="/reservations/<%= reservation.id %>/delete" method="POST">
+                            <button type="submit" class="btn-danger">Delete Request</button>
+                        </form>
+                    <% } %>
+                </div>
+            </div>
+        <% } %>
+
+        <% if (isSeller && ['pending', 'proposed'].includes(reservation.status)) { %>
+            <div class="reservation-action-panel">
+                <h2>Respond to the buyer</h2>
+                <% if (reservation.status === 'pending') { %>
+                    <form action="/reservations/<%= reservation.id %>/confirm" method="POST" class="inline-form">
+                        <button type="submit" class="btn-primary">Confirm Buyer's Appointment</button>
+                    </form>
+                <% } %>
+
+                <h3>Propose another appointment</h3>
+                <form action="/reservations/<%= reservation.id %>/propose" method="POST" class="reservation-form reservation-proposal-form">
+                    <label for="appointmentDate">Date</label>
+                    <input id="appointmentDate" name="appointmentDate" type="date"
+                           value="<%= reservation.appointment_date ? new Date(reservation.appointment_date).toISOString().slice(0, 10) : '' %>" required>
+
+                    <label for="appointmentTime">Time</label>
+                    <input id="appointmentTime" name="appointmentTime" type="time"
+                           value="<%= reservation.appointment_time ? String(reservation.appointment_time).slice(0, 5) : '' %>" required>
+
+                    <label for="meetingLocation">Meeting location</label>
+                    <input id="meetingLocation" name="meetingLocation" type="text" maxlength="255"
+                           value="<%= reservation.meeting_location || '' %>" required>
+
+                    <button type="submit" class="btn-secondary">Send Proposal</button>
+                </form>
+
+                <form action="/reservations/<%= reservation.id %>/cancel" method="POST" class="inline-form">
+                    <button type="submit" class="btn-danger">Decline Request</button>
+                </form>
+            </div>
+        <% } %>
+
+        <% if (reservation.status === 'confirmed') { %>
+            <div class="reservation-action-panel">
+                <h2>Appointment confirmed</h2>
+                <p>Meet at the agreed date, time and location. The seller records the transaction after collection.</p>
+                <div class="reservation-actions">
+                    <% if (isSeller) { %>
+                        <form action="/reservations/<%= reservation.id %>/complete" method="POST">
+                            <button type="submit" class="btn-primary">Mark Completed</button>
+                        </form>
+                    <% } %>
+                    <form action="/reservations/<%= reservation.id %>/cancel" method="POST">
+                        <button type="submit" class="btn-danger">Cancel Reservation</button>
+                    </form>
+                </div>
+            </div>
+        <% } %>
+
+        <% if (isBuyer && reservation.status === 'cancelled') { %>
+            <div class="reservation-action-panel">
+                <p>This reservation is cancelled and can be removed from your history.</p>
+                <form action="/reservations/<%= reservation.id %>/delete" method="POST">
+                    <button type="submit" class="btn-danger">Delete Reservation</button>
+                </form>
+            </div>
+        <% } %>
+
+        <% if (reservation.status === 'completed') { %>
+            <div class="reservation-action-panel">
+                <h2>Transaction completed</h2>
+                <p>The purchase has been recorded. The buyer can now submit a rating.</p>
+            </div>
+        <% } %>
+    </section>
+</main>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+</body>
+</html>
