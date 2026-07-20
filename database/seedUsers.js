@@ -36,6 +36,15 @@ const accounts = [
         password: 'Student@123',
         phone: '65551234',
         role: 'user'
+    },
+    {
+        // Second student, so a buyer and a seller can be tested at the same
+        // time using two different logins in two browser windows.
+        name: 'Student Two',
+        email: 'student2@myrp.edu.sg',
+        password: 'Student@123',
+        phone: '65559876',
+        role: 'user'
     }
 ];
 

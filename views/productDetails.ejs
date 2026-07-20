@@ -8,46 +8,105 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><%= product.name %> - CampusCycle</title>
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+
 <nav class="navbar">
-    <a class="brand" href="/"><span class="brand-icon">&#9851;</span><span><span class="campus">Campus</span><span class="cycle">Cycle</span></span></a>
+    <div class="brand">
+        <div class="brand-icon">&#9851;</div>
+        <span class="campus">Campus</span><span class="cycle">Cycle</span>
+    </div>
+
     <div class="nav-links">
-        <a href="/">Home</a><a href="/browse">Browse</a>
-        <% if (currentUser) { %><a href="/reservations">My Reservations</a><% } %>
+        <a href="/">Home</a>
+        <a href="/browse">Browse</a>
+        <% if (currentUser) { %>
+            <a href="/reservations">My Reservations</a>
+        <% } %>
     </div>
 </nav>
 
-<main class="admin-section product-detail-shell">
-    <% if (errors && errors.length > 0) { %><div class="alert alert-error"><%= errors[0] %></div><% } %>
-    <% if (success && success.length > 0) { %><div class="alert alert-success"><%= success[0] %></div><% } %>
+<% if (sellerInfo) { %>
+<div class="sellerbar">
+    <a href="/users/<%= sellerInfo.id %>" class="sellerbar-main">
+        <div class="sellerbar-avatar"><%= sellerInfo.initials %></div>
 
-    <article class="review-card product-detail-card">
-        <div class="product-detail-image">
-            <% if (product.image) { %><img src="/images/<%= product.image %>" alt="<%= product.name %>"><% } %>
+        <div class="sellerbar-info">
+            <div class="sellerbar-name-row">
+                <span class="sellerbar-name"><%= sellerInfo.name %></span>
+                <% if (sellerInfo.isGoodSeller) { %>
+                    <span class="sellerbar-badge">Highly rated seller</span>
+                <% } %>
+            </div>
+
+            <div class="sellerbar-meta">
+                <span><%= sellerInfo.lastSeen %></span>
+                <span class="sellerbar-sep">|</span>
+                <span>Member for <%= sellerInfo.membershipLength %></span>
+                <span class="sellerbar-sep">|</span>
+                <span><%= sellerInfo.itemsSold %> sold</span>
+                <% if (sellerInfo.reviewCount > 0) { %>
+                    <span class="sellerbar-sep">|</span>
+                    <span class="sellerbar-rating">&#9733; <%= Number(sellerInfo.averageRating).toFixed(1) %> (<%= sellerInfo.reviewCount %>)</span>
+                    <span class="sellerbar-sep">|</span>
+                    <span><%= sellerInfo.positivePercent %>% positive</span>
+                <% } else { %>
+                    <span class="sellerbar-sep">|</span>
+                    <span>No reviews yet</span>
+                <% } %>
+            </div>
         </div>
-        <div class="review-body">
-            <span class="status-badge status-<%= product.status %> product-detail-status"><%= product.status.replace('_', ' ') %></span>
-            <h1><%= product.name %></h1>
+    </a>
+
+    <div class="sellerbar-actions">
+        <a href="/users/<%= sellerInfo.id %>" class="sellerbar-btn">View profile</a>
+        <button class="sellerbar-btn" disabled>Seller history</button>
+    </div>
+</div>
+<% } %>
+
+<div class="admin-section">
+    <% if (errors && errors.length > 0) { %>
+        <div class="alert alert-error"><%= errors[0] %></div>
+    <% } %>
+    <% if (success && success.length > 0) { %>
+        <div class="alert alert-success"><%= success[0] %></div>
+    <% } %>
+
+    <div class="review-card">
+        <div class="review-thumb" style="width:220px; height:220px;">
+            <% if (product.image) { %>
+                <img src="/images/<%= product.image %>" alt="<%= product.name %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
+            <% } %>
+        </div>
+
+        <div class="review-body" style="min-width:280px;">
+            <span class="status-badge status-<%= product.status %>" style="position:static; display:inline-block; margin-bottom:8px;"><%= product.status.replace('_', ' ') %></span>
+
+            <h4 style="font-size:22px;"><%= product.name %></h4>
             <span class="condition-tag"><%= product.condition.replace('_', ' ') %></span>
-            <p class="product-price product-detail-price">$<%= Number(product.price).toFixed(2) %></p>
+
+            <p class="product-price" style="font-size:22px; margin:10px 0;">$<%= Number(product.price).toFixed(2) %></p>
+
             <p class="review-meta">Category: <%= product.categoryName %></p>
             <p class="review-meta">Quantity available: <%= product.quantity %></p>
             <p class="review-meta">Seller: <%= product.sellerName %></p>
             <p class="review-meta">Contact: <%= product.contact_info || 'Ask the seller' %></p>
-            <p class="product-description"><%= product.description || 'No description provided.' %></p>
 
-            <a href="/details/<%= product.id %>/ratings" class="rating product-detail-rating">
+            <p style="margin-top:14px;"><%= product.description || 'No description provided.' %></p>
+
+            <a href="/details/<%= product.id %>/ratings" class="rating" style="margin-top:14px;">
                 <span class="rating-stars" aria-hidden="true">
-                    <% for (let star = 1; star <= 5; star++) { %><span class="<%= star <= Math.round(average) ? 'is-filled' : '' %>">★</span><% } %>
+                    <% for (let star = 1; star <= 5; star++) { %>
+                        <span class="<%= star <= Math.round(average) ? 'is-filled' : '' %>">★</span>
+                    <% } %>
                 </span>
                 <strong><%= average.toFixed(1) %></strong>
                 <span class="count"><%= reviewCount %> verified review<%= reviewCount === 1 ? '' : 's' %></span>
             </a>
 
-            <div class="product-actions-full product-detail-actions">
+            <div class="product-actions-full" style="margin-top:18px;">
                 <button class="btn-outline">&#9825; Add to Wishlist</button>
                 <button class="btn-primary">Add to Cart</button>
                 <% if (product.status === 'selling' && product.quantity > 0) { %>
@@ -61,14 +120,18 @@
                 <% } else { %>
                     <button class="btn-secondary" disabled>Unavailable</button>
                 <% } %>
-                <a href="/details/<%= product.id %>/ratings" class="btn-outline">Read Reviews</a>
+                <a href="/details/<%= product.id %>/rating/new" class="btn-outline">Give Rating</a>
                 <button class="btn-report" title="Report this listing">&#9873;</button>
             </div>
         </div>
-    </article>
-    <a href="/browse" class="btn-outline">&larr; Back to Browse</a>
-</main>
+    </div>
 
-<footer class="footer">&copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.</footer>
+    <a href="/browse" class="btn-outline">&larr; Back to Browse</a>
+</div>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+
 </body>
 </html>
