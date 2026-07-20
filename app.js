@@ -5,12 +5,16 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const multer = require('multer');
 const bcrypt = require('bcrypt');
+const fs = require('fs');
 const path = require('path');
 const productModel = require('./models/productModel');
 const categoryModel = require('./models/categoryModel');
 const reportModel = require('./models/reportModel');
 const userModel = require('./models/userModel');
 const reservationModel = require('./models/reservationModel');
+const ratingModel = require('./models/ratingModel');
+const purchaseModel = require('./models/purchaseModel');
+const { ratingUpload, uploadDirectory } = require('./middleware/ratingUpload');
 const { isLoggedIn, isAdmin, isGuest, validateLogin } = require('./middleware/auth');
 
 const app = express();
@@ -76,7 +80,17 @@ app.get('/', (req, res) => {
                 console.error('Database query error:', catError.message);
                 return res.send('Error retrieving categories');
             }
-            res.render('index', { products: results, categories: categories });
+            ratingModel.getSummariesByProductIds(results.map((product) => product.id), (ratingError, summaries) => {
+                if (ratingError) {
+                    console.error('Database query error:', ratingError.message);
+                    return res.send('Error retrieving ratings');
+                }
+                const products = results.map((product) => ({
+                    ...product,
+                    ratingSummary: summaries.get(Number(product.id)) || { averageRating: 0, reviewCount: 0 }
+                }));
+                res.render('index', { products: products, categories: categories });
+            });
         });
     });
 });
@@ -97,11 +111,21 @@ app.get('/browse', (req, res) => {
                 console.error('Database query error:', error.message);
                 return res.send('Error retrieving products');
             }
-            res.render('browse', {
-                products: results,
-                categories: categories,
-                selectedCategory: categoryId,
-                search: search
+            ratingModel.getSummariesByProductIds(results.map((product) => product.id), (ratingError, summaries) => {
+                if (ratingError) {
+                    console.error('Database query error:', ratingError.message);
+                    return res.send('Error retrieving ratings');
+                }
+                const products = results.map((product) => ({
+                    ...product,
+                    ratingSummary: summaries.get(Number(product.id)) || { averageRating: 0, reviewCount: 0 }
+                }));
+                res.render('browse', {
+                    products: products,
+                    categories: categories,
+                    selectedCategory: categoryId,
+                    search: search
+                });
             });
         });
     });
@@ -151,12 +175,20 @@ app.get('/products/:id', (req, res) => {
                     };
                 }
 
-                res.render('productDetails', {
-                    product: product,
-                    currentUser: req.session.user || null,
-                    sellerInfo: sellerInfo,
-                    errors: req.flash('error'),
-                    success: req.flash('success')
+                ratingModel.getSummaryByProductId(product.id, (ratingError, ratingSummary) => {
+                    if (ratingError) {
+                        console.error('Database query error:', ratingError.message);
+                        return res.send('Error retrieving ratings');
+                    }
+
+                    res.render('productDetails', {
+                        product: product,
+                        currentUser: req.session.user || null,
+                        sellerInfo: sellerInfo,
+                        ratingSummary: ratingSummary,
+                        errors: req.flash('error'),
+                        success: req.flash('success')
+                    });
                 });
             });
         });
@@ -241,7 +273,217 @@ app.post('/admin/products/:id/reject', (req, res) => {
 
 
 // ==================== Kaido's routes ====================
+// Buyer ratings & reviews (with photo/video media) on a completed purchase.
 
+function toItemView(product) {
+    return {
+        id: product.id,
+        name: product.name,
+        price: Number(product.price),
+        category: product.categoryName || 'Other',
+        image: product.image ? `/images/${product.image}` : null
+    };
+}
+
+function getUploadedFiles(req) {
+    return [
+        ...(req.files?.images || []),
+        ...(req.files?.videos || [])
+    ];
+}
+
+function removeUploadedFiles(files) {
+    for (const file of files) {
+        fs.unlink(file.path, () => {});
+    }
+}
+
+function removeStoredMedia(mediaPaths) {
+    for (const mediaPath of mediaPaths) {
+        const fileName = path.basename(mediaPath);
+        fs.unlink(path.join(uploadDirectory, fileName), () => {});
+    }
+}
+
+// Writing a review requires an account that actually completed a purchase
+// of this product.
+function requirePurchasedProduct(req, res, next) {
+    const productId = Number(req.params.id);
+    const buyerId = req.session.user?.id || null;
+
+    if (!Number.isInteger(productId) || productId <= 0) {
+        return res.status(400).send('Invalid product ID');
+    }
+
+    if (!buyerId) {
+        req.flash('error', 'Sign in with the account that purchased this item to write a review');
+        return res.redirect(`/details/${productId}/ratings`);
+    }
+
+    purchaseModel.findCompletedPurchase(buyerId, productId, (error, purchase) => {
+        if (error) {
+            return next(error);
+        }
+        if (!purchase) {
+            req.flash('error', 'Only verified buyers can review this item');
+            return res.redirect(`/details/${productId}/ratings`);
+        }
+
+        req.ratingBuyerId = buyerId;
+        req.ratingPurchase = purchase;
+        next();
+    });
+}
+
+// Public "ratings & reviews" list. Clicking a product's star rating lands
+// here first, not straight into the write-a-review form.
+app.get('/details/:id/ratings', (req, res, next) => {
+    const productId = Number(req.params.id);
+    if (!Number.isInteger(productId) || productId <= 0) {
+        return res.status(400).send('Invalid product ID');
+    }
+
+    productModel.getProductById(productId, (error, results) => {
+        if (error) {
+            return next(error);
+        }
+        if (results.length === 0) {
+            return res.status(404).send('Product not found');
+        }
+        const product = results[0];
+        const buyerId = req.session.user?.id || null;
+
+        ratingModel.getSummaryByProductId(productId, (summaryError, ratingSummary) => {
+            if (summaryError) {
+                return next(summaryError);
+            }
+
+            ratingModel.getPublicReviewsByProductId(productId, (reviewsError, reviews) => {
+                if (reviewsError) {
+                    return next(reviewsError);
+                }
+
+                if (!buyerId) {
+                    return res.render('details/ratings', {
+                        item: toItemView(product),
+                        itemId: productId,
+                        ratingSummary,
+                        reviews,
+                        isLoggedIn: false,
+                        canReview: false,
+                        hasExistingReview: false,
+                        success: req.flash('success')[0] || null,
+                        error: req.flash('error')[0] || null
+                    });
+                }
+
+                purchaseModel.findCompletedPurchase(buyerId, productId, (purchaseError, purchase) => {
+                    if (purchaseError) {
+                        return next(purchaseError);
+                    }
+
+                    ratingModel.findByProductAndBuyer(productId, buyerId, (ratingError, existingRating) => {
+                        if (ratingError) {
+                            return next(ratingError);
+                        }
+
+                        res.render('details/ratings', {
+                            item: toItemView(product),
+                            itemId: productId,
+                            ratingSummary,
+                            reviews,
+                            isLoggedIn: true,
+                            canReview: Boolean(purchase),
+                            hasExistingReview: Boolean(existingRating),
+                            success: req.flash('success')[0] || null,
+                            error: req.flash('error')[0] || null
+                        });
+                    });
+                });
+            });
+        });
+    });
+});
+
+// Legacy/singular URL - redirect straight to the reviews list.
+app.get('/details/:id/rating', (req, res) => {
+    res.redirect(301, `/details/${req.params.id}/ratings`);
+});
+
+// Write/edit a review form.
+app.get('/details/:id/rating/new', requirePurchasedProduct, (req, res, next) => {
+    const productId = Number(req.params.id);
+
+    productModel.getProductById(productId, (error, results) => {
+        if (error) {
+            return next(error);
+        }
+        if (results.length === 0) {
+            return res.status(404).send('Product not found');
+        }
+        const product = results[0];
+
+        ratingModel.findByProductAndBuyer(productId, req.ratingBuyerId, (ratingError, existingRating) => {
+            if (ratingError) {
+                return next(ratingError);
+            }
+
+            res.render('details/rating', {
+                pageTitle: existingRating ? 'Update your review' : 'Share your experience',
+                item: toItemView(product),
+                itemId: productId,
+                selectedRating: existingRating?.rating || 0,
+                comment: existingRating?.comment || '',
+                isAnonymous: existingRating?.is_anonymous || false,
+                existingMedia: existingRating?.media || [],
+                success: null,
+                error: req.flash('error')[0] || null
+            });
+        });
+    });
+});
+
+// Submit a new or updated review.
+app.post('/details/:id/rating/new', requirePurchasedProduct, ratingUpload, (req, res, next) => {
+    const productId = Number(req.params.id);
+    const rating = Number(req.body.rating);
+    const comment = req.body.comment?.trim() || null;
+    const isAnonymous = req.body.isAnonymous === '1';
+    const removeMedia = req.body.removeMedia === '1';
+    const mediaFiles = getUploadedFiles(req);
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+        removeUploadedFiles(mediaFiles);
+        req.flash('error', 'Please choose a rating from 1 to 5 stars');
+        return res.redirect(`/details/${productId}/rating/new`);
+    }
+
+    if (comment && comment.length > 500) {
+        removeUploadedFiles(mediaFiles);
+        req.flash('error', 'Your review must be 500 characters or fewer');
+        return res.redirect(`/details/${productId}/rating/new`);
+    }
+
+    ratingModel.upsert({
+        productId,
+        buyerId: req.ratingBuyerId,
+        sellerId: req.ratingPurchase.seller_id,
+        rating,
+        comment,
+        isAnonymous,
+        mediaFiles,
+        replaceMedia: mediaFiles.length > 0 || removeMedia
+    }, (error, result) => {
+        if (error) {
+            removeUploadedFiles(mediaFiles);
+            return next(error);
+        }
+
+        removeStoredMedia(result.oldMediaPaths);
+        req.flash('success', 'Your rating has been saved');
+        res.redirect(`/details/${productId}/ratings`);
+    });
+});
 
 // ==================== Ei Htet Htet Tun's routes ====================
 // Reporting products & users, and the admin review process that resolves those reports.
