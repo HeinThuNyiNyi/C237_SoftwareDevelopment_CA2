@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report Listing - CampusCycle</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="brand">
+        <div class="brand-icon">&#9851;</div>
+        <span class="campus">Campus</span><span class="cycle">Cycle</span>
+    </div>
+
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/browse">Browse</a>
+        <a href="/my_reports">My Reports</a>
+    </div>
+</nav>
+
+<section class="hero">
+    <h1>Report a Listing</h1>
+    <p>Tell us what is wrong with this listing and our admins will look into it.</p>
+</section>
+
+<div class="admin-section">
+    <div class="review-card">
+        <div class="review-thumb" style="width:90px; height:90px;">
+            <img src="/images/<%= product.image %>" alt="<%= product.name %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
+        </div>
+        <div class="review-body">
+            <h4>You are reporting: <%= product.name %></h4>
+            <p class="review-meta">Sold by: <%= product.sellerName %></p>
+        </div>
+    </div>
+
+    <div class="review-card" style="display:block;">
+        <form action="/user_report" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="reported_product_id" value="<%= product.id %>">
+            <input type="hidden" name="reported_user_id" value="<%= product.seller_id %>">
+
+            <div style="margin-bottom:14px;">
+                <label for="category">Reason</label><br>
+                <select name="category" id="category" class="ban-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="prohibited_item">Prohibited item</option>
+                    <option value="scam">Scam / fraud</option>
+                    <option value="misleading">Misleading listing</option>
+                    <option value="offensive">Offensive content</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:14px;">
+                <label for="description">Description</label><br>
+                <textarea name="description" id="description" class="reason-input" rows="4" required></textarea>
+            </div>
+
+            <div style="margin-bottom:14px;">
+                <label for="evidenceImage">Evidence (optional screenshot/photo)</label><br>
+                <input type="file" id="evidenceImage" name="evidenceImage" accept="image/*">
+            </div>
+
+            <button type="submit" class="btn-primary">Submit Report</button>
+            <a href="/products/<%= product.id %>" class="btn-outline">Cancel</a>
+        </form>
+    </div>
+</div>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+
+</body>
+</html>
