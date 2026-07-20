@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CampusCycle</title>
+<title>CampusCycle - Student Marketplace</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -15,7 +15,7 @@
     </div>
 
     <div class="nav-links">
-        <a href="/">Home</a>
+        <a href="/" class="active">Home</a>
 
         <div class="dropdown">
             <a href="/browse">Browse</a>
@@ -27,7 +27,8 @@
             </div>
         </div>
 
-        <a href="/wishlist">Wishlist</a>
+        <a href="/wishlist">Wishlist ❤️</a>
+        <a href="/cart">Cart 🛒</a>
 
         <div class="dropdown">
             <a href="/profile">Account</a>
@@ -48,27 +49,62 @@
     <p>Buy, sell and swap with fellow students &mdash; sustainably.</p>
 </section>
 
-<div class="section-title">
-    <h2>Recently Listed</h2>
-</div>
+<main class="page-container" style="padding-top: 0;">
+    <!-- Alert Flash Messages -->
+    <% if (success_msg && success_msg.length > 0) { %>
+        <div class="alert alert-success" style="margin-bottom: 20px;">
+            <span>✓</span> <%= success_msg %>
+        </div>
+    <% } %>
 
-<div class="product-grid">
-    <div class="product-card">
-        <div class="product-image">
-            &#128187;
-            <button class="wishlist-btn" title="Add to wishlist">&#9825;</button>
+    <% if (error_msg && error_msg.length > 0) { %>
+        <div class="alert alert-error" style="margin-bottom: 20px;">
+            <span>⚠️</span> <%= error_msg %>
         </div>
-        <div class="product-body">
-            <p class="product-title">Dell Latitude 5420 Laptop</p>
-            <p class="product-price">$320</p>
-            <p class="rating">&#9733;&#9733;&#9733;&#9733;&#9734; <span class="count">(18)</span></p>
-            <div class="product-actions">
-                <button class="add-to-cart">Add to Cart</button>
-                <button class="report-btn" title="Report this listing">&#9873;</button>
-            </div>
-        </div>
+    <% } %>
+
+    <div class="section-title">
+        <h2>Recently Listed Items</h2>
+        <a href="/seed" class="seed-btn" title="Populate database with sample items">🌱 Seed Sample Items</a>
     </div>
-</div>
+
+    <% if (products && products.length > 0) { %>
+        <div class="product-grid">
+            <% products.forEach(product => { %>
+                <div class="product-card">
+                    <div class="product-image">
+                        <%= product.image_symbol || '📦' %>
+                        <!-- Form to Add to Wishlist -->
+                        <form action="/wishlist/add/<%= product.id %>" method="POST" style="position: absolute; top: 10px; right: 10px;">
+                            <button type="submit" class="wishlist-btn" title="Add to wishlist">&#9825;</button>
+                        </form>
+                    </div>
+                    <div class="product-body">
+                        <span class="category-badge"><%= product.category || 'General' %></span>
+                        <h3 class="product-title"><%= product.name %></h3>
+                        <p class="product-price">$<%= Number(product.price).toFixed(2) %></p>
+                        <p class="product-desc"><%= product.description || 'Quality pre-loved item.' %></p>
+                        
+                        <div class="product-actions">
+                            <!-- Form to Add to Cart -->
+                            <form action="/cart/add/<%= product.id %>" method="POST" style="flex: 1;">
+                                <button type="submit" class="add-to-cart">Add to Cart 🛒</button>
+                            </form>
+                            <button class="report-btn" title="Report this listing">&#9873;</button>
+                        </div>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+    <% } else { %>
+        <div class="empty-state-card">
+            <div class="empty-icon">📦</div>
+            <h2>No product listings found</h2>
+            <p>Click the seed button above to quickly populate demo items in your MySQL database!</p>
+            <a href="/seed" class="btn-primary">Populate Database</a>
+        </div>
+    <% } %>
+</main>
 
 <footer class="footer">
     &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
