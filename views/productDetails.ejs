@@ -12,20 +12,7 @@
 </head>
 <body>
 
-<nav class="navbar">
-    <div class="brand">
-        <div class="brand-icon">&#9851;</div>
-        <span class="campus">Campus</span><span class="cycle">Cycle</span>
-    </div>
-
-    <div class="nav-links">
-        <a href="/">Home</a>
-        <a href="/browse">Browse</a>
-        <% if (currentUser) { %>
-            <a href="/reservations">My Reservations</a>
-        <% } %>
-    </div>
-</nav>
+<%- include('partials/navbar') %>
 
 <!-- ============================================================
      Seller bar (Hein Thu Nyi Nyi)

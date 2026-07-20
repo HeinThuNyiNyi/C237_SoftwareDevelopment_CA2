@@ -8,43 +8,7 @@
 </head>
 <body>
 
-<nav class="navbar">
-    <div class="brand">
-        <div class="brand-icon">&#9851;</div>
-        <span class="campus">Campus</span><span class="cycle">Cycle</span>
-    </div>
-
-    <div class="nav-links">
-        <a href="/">Home</a>
-
-        <div class="dropdown">
-            <a href="/browse">Browse</a>
-            <div class="dropdown-menu">
-                <% categories.forEach(function(category) { %>
-                    <a href="/browse?category=<%= category.id %>"><%= category.name %></a>
-                <% }); %>
-            </div>
-        </div>
-
-        <a href="/wishlist">Wishlist</a>
-        <a href="/cart">Cart</a>
-
-        <div class="dropdown">
-            <a href="/profile">Account</a>
-            <div class="dropdown-menu">
-                <a href="/profile">My Profile</a>
-                <a href="/my-listings">My Listings</a>
-                <a href="/purchase-history">Purchase History</a>
-                <a href="/sales-history">Sales History</a>
-                <a href="/reservations">My Reservations</a>
-                <a href="/notifications">Notifications</a>
-                <a href="/logout">Logout</a>
-            </div>
-        </div>
-
-        <a href="/sell" class="nav-cta">+ Sell an Item</a>
-    </div>
-</nav>
+<%- include('partials/navbar') %>
 
 
 <div class="profile-layout">
@@ -59,29 +23,26 @@
         </a>
 
         <p class="profile-side-heading">Selling</p>
-        <span class="profile-side-item profile-side-disabled">
-            <span class="profile-side-icon">&#9776;</span> My listings
-        </span>
-        <span class="profile-side-item profile-side-disabled">
-            <span class="profile-side-icon">&#127991;</span> My sales
-        </span>
-        <span class="profile-side-item profile-side-disabled">
+        <a href="/sales-history" class="profile-side-item">
+            <span class="profile-side-icon">&#127991;</span> My sales &amp; listings
+        </a>
+        <a href="/purchase-history" class="profile-side-item">
             <span class="profile-side-icon">&#128722;</span> My purchases
-        </span>
+        </a>
 
         <p class="profile-side-heading">Manage</p>
         <span class="profile-side-item profile-side-disabled">
             <span class="profile-side-icon">&#9825;</span> Wishlist
         </span>
-        <span class="profile-side-item profile-side-disabled">
+        <a href="/reservations" class="profile-side-item">
             <span class="profile-side-icon">&#128197;</span> Reservations
-        </span>
+        </a>
         <span class="profile-side-item profile-side-disabled">
             <span class="profile-side-icon">&#9733;</span> Reviews &amp; ratings
         </span>
-        <span class="profile-side-item profile-side-disabled">
+        <a href="/my_reports" class="profile-side-item">
             <span class="profile-side-icon">&#9873;</span> My reports
-        </span>
+        </a>
 
         <p class="profile-side-heading">Account</p>
         <span class="profile-side-item profile-side-disabled">

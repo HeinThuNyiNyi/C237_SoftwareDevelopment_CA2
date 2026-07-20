@@ -95,6 +95,11 @@ function getBannedUsers(callback) {
     db.query(sql, callback);
 }
 
+// Total number of registered users, for the admin dashboard stat card.
+function countAllUsers(callback) {
+    db.query('SELECT COUNT(*) AS total FROM users', callback);
+}
+
 module.exports = {
     findByEmail,
     findById,
@@ -104,5 +109,6 @@ module.exports = {
     getUserById,
     banUser,
     unbanUser,
-    getBannedUsers
+    getBannedUsers,
+    countAllUsers
 };

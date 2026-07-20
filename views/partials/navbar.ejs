@@ -1,0 +1,66 @@
+<nav class="navbar">
+    <a class="brand" href="/">
+        <div class="brand-icon">&#9851;</div>
+        <span class="campus">Campus</span><span class="cycle">Cycle</span>
+    </a>
+
+    <div class="nav-links">
+        <div class="nav-menu">
+            <button type="button" class="nav-menu-toggle" aria-haspopup="true" aria-expanded="false">
+                <span class="nav-menu-icon">&#9776;</span> Menu
+            </button>
+            <div class="nav-menu-panel">
+                <div class="nav-menu-group">
+                    <p class="nav-menu-heading">Shopping</p>
+                    <a href="/wishlist"><span class="nav-menu-item-icon">&#9825;</span> Wishlist</a>
+                    <a href="/cart"><span class="nav-menu-item-icon">&#128722;</span> Cart</a>
+                </div>
+
+                <div class="nav-menu-group">
+                    <p class="nav-menu-heading">Selling</p>
+                    <a href="/sales-history"><span class="nav-menu-item-icon">&#127991;</span> Sales History</a>
+                    <a href="/purchase-history"><span class="nav-menu-item-icon">&#128722;</span> Purchase History</a>
+                </div>
+
+                <div class="nav-menu-group">
+                    <p class="nav-menu-heading">Account</p>
+                    <a href="/profile"><span class="nav-menu-item-icon">&#128100;</span> My Profile</a>
+                    <a href="/reservations"><span class="nav-menu-item-icon">&#128197;</span> My Reservations</a>
+                    <a href="/my_reports"><span class="nav-menu-item-icon">&#9873;</span> My Reports</a>
+                    <a href="/notifications"><span class="nav-menu-item-icon">&#128276;</span> Notifications</a>
+                </div>
+
+                <div class="nav-menu-group nav-menu-group-last">
+                    <a href="/logout" class="nav-menu-logout"><span class="nav-menu-item-icon">&#8617;</span> Logout</a>
+                </div>
+            </div>
+        </div>
+
+        <a href="/sell" class="nav-cta">+ Sell an Item</a>
+    </div>
+</nav>
+
+<div class="search-bar">
+    <a href="/" class="search-bar-home" title="Home">&#8962; Home</a>
+
+    <form action="/browse" method="GET" class="search-bar-form">
+        <div class="search-bar-input-group">
+            <span class="search-bar-icon">&#128269;</span>
+            <input type="text" name="q" placeholder="Search listings..." class="search-bar-input" autocomplete="off">
+        </div>
+
+        <% if (typeof categories !== 'undefined') { %>
+            <select name="category" class="search-bar-select">
+                <option value="">All Categories</option>
+                <% categories.forEach(function(category) { %>
+                    <option value="<%= category.id %>" <% if (typeof selectedCategory !== 'undefined' && String(selectedCategory) === String(category.id)) { %>selected<% } %>><%= category.name %></option>
+                <% }); %>
+            </select>
+        <% } %>
+
+        <button type="submit" class="btn-primary search-bar-submit">Search</button>
+    </form>
+</div>
+<p class="search-bar-subtext">Find what you need from fellow students.</p>
+
+<script src="/js/navbar.js" defer></script>

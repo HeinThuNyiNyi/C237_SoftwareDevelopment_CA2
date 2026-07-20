@@ -8,18 +8,7 @@
 </head>
 <body>
 
-<nav class="navbar">
-    <div class="brand">
-        <div class="brand-icon">&#9851;</div>
-        <span class="campus">Campus</span><span class="cycle">Cycle</span>
-    </div>
-
-    <div class="nav-links">
-        <a href="/">Home</a>
-        <a href="/browse">Browse</a>
-        <a href="/my_reports">My Reports</a>
-    </div>
-</nav>
+<%- include('partials/navbar') %>
 
 <section class="hero">
     <h1>Report a User</h1>
@@ -35,7 +24,7 @@
         </div>
     </div>
 
-    <div class="review-card" style="display:block;">
+    <div class="review-card form-card">
         <form action="/report_user" method="POST" enctype="multipart/form-data">
             <input type="hidden" name="reported_user_id" value="<%= reportedUser.id %>">
 

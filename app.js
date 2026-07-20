@@ -64,10 +64,6 @@ app.set('view engine', 'ejs');
 
 // ==================== Thiha Aung's routes ====================
 
-// TODO: replace with req.session.user.id once the login feature is done.
-// Using the seeded 'Thiha Aung' user (id 2) as the seller for now.
-const TEMP_SELLER_ID = 2;
-
 // Homepage - the listings page is now Browse, so "/" just goes straight there.
 app.get('/', (req, res) => {
     res.redirect('/browse');
@@ -174,7 +170,7 @@ app.get('/products/:id', (req, res) => {
 });
 
 // Sell page - show the add-product form
-app.get('/sell', (req, res) => {
+app.get('/sell', isLoggedIn, (req, res) => {
     categoryModel.getAllCategories((error, categories) => {
         if (error) {
             console.error('Database query error:', error.message);
@@ -185,7 +181,7 @@ app.get('/sell', (req, res) => {
 });
 
 // Sell page - submit a new product (always starts as 'pending' until admin approves it)
-app.post('/sell', upload.single('image'), (req, res) => {
+app.post('/sell', isLoggedIn, upload.single('image'), (req, res) => {
     const { name, categoryId, description, price, condition, quantity, contactInfo } = req.body;
 
     let image;
@@ -196,7 +192,7 @@ app.post('/sell', upload.single('image'), (req, res) => {
     }
 
     productModel.createProduct({
-        sellerId: TEMP_SELLER_ID,
+        sellerId: req.session.user.id,
         categoryId: categoryId,
         name: name,
         description: description,
@@ -215,14 +211,141 @@ app.post('/sell', upload.single('image'), (req, res) => {
     });
 });
 
-// Admin dashboard - shows products waiting for approval
+// Edit a listing - show the pre-filled form. Only the seller can edit their
+// own post, and only while it's still 'selling' (not pending/reserved/sold out).
+app.get('/products/:id/edit', isLoggedIn, (req, res) => {
+    productModel.getProductById(req.params.id, (error, results) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving product');
+        }
+        if (results.length === 0) {
+            return res.status(404).send('Product not found');
+        }
+
+        const product = results[0];
+        if (product.seller_id !== req.session.user.id || product.status !== 'selling') {
+            req.flash('error', 'You can only edit your own listings while they are selling.');
+            return res.redirect('/sales-history');
+        }
+
+        categoryModel.getAllCategories((catError, categories) => {
+            if (catError) {
+                console.error('Database query error:', catError.message);
+                return res.send('Error retrieving categories');
+            }
+            res.render('editProduct', { product: product, categories: categories });
+        });
+    });
+});
+
+// Edit a listing - save the changes
+app.post('/products/:id/edit', isLoggedIn, upload.single('image'), (req, res) => {
+    const productId = req.params.id;
+
+    productModel.getProductById(productId, (error, results) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving product');
+        }
+        if (results.length === 0) {
+            return res.status(404).send('Product not found');
+        }
+
+        const product = results[0];
+        if (product.seller_id !== req.session.user.id || product.status !== 'selling') {
+            req.flash('error', 'You can only edit your own listings while they are selling.');
+            return res.redirect('/sales-history');
+        }
+
+        const { name, categoryId, description, price, condition, quantity, contactInfo } = req.body;
+        const image = req.file ? req.file.filename : product.image; // keep the old image unless a new one was uploaded
+
+        productModel.updateProduct(productId, {
+            categoryId: categoryId,
+            name: name,
+            description: description,
+            price: price,
+            condition: condition,
+            quantity: quantity,
+            image: image,
+            contactInfo: contactInfo
+        }, (updateError) => {
+            if (updateError) {
+                console.error('Error updating product:', updateError.message);
+                return res.send('Error updating product');
+            }
+            req.flash('success', 'Listing updated.');
+            res.redirect('/sales-history');
+        });
+    });
+});
+
+// Delete a listing - only the seller, and only while it's still 'selling'
+app.post('/products/:id/delete', isLoggedIn, (req, res) => {
+    const productId = req.params.id;
+
+    productModel.getProductById(productId, (error, results) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving product');
+        }
+        if (results.length === 0) {
+            return res.status(404).send('Product not found');
+        }
+
+        const product = results[0];
+        if (product.seller_id !== req.session.user.id || product.status !== 'selling') {
+            req.flash('error', 'You can only delete your own listings while they are selling.');
+            return res.redirect('/sales-history');
+        }
+
+        productModel.deleteProduct(productId, (deleteError) => {
+            if (deleteError) {
+                console.error('Error deleting product:', deleteError.message);
+                return res.send('Error deleting product');
+            }
+            req.flash('success', 'Listing deleted.');
+            res.redirect('/sales-history');
+        });
+    });
+});
+
+// Admin dashboard - stats overview (real counts) plus the products still
+// waiting for approval.
 app.get('/admin', (req, res) => {
     productModel.getPendingProducts((error, pendingProducts) => {
         if (error) {
             console.error('Database query error:', error.message);
             return res.send('Error retrieving pending products');
         }
-        res.render('admin/index', { pendingProducts: pendingProducts });
+        userModel.countAllUsers((userError, userRows) => {
+            if (userError) {
+                console.error('Database query error:', userError.message);
+                return res.send('Error retrieving user count');
+            }
+            reportModel.getAllReports('pending', (reportError, openReports) => {
+                if (reportError) {
+                    console.error('Database query error:', reportError.message);
+                    return res.send('Error retrieving reports');
+                }
+                reservationModel.getAllReservationsForAdmin('all', (reservationError, reservations) => {
+                    if (reservationError) {
+                        console.error('Database query error:', reservationError.message);
+                        return res.send('Error retrieving reservations');
+                    }
+                    const activeReservations = reservations.filter((reservation) =>
+                        ['pending', 'proposed', 'confirmed'].includes(reservation.status)
+                    );
+                    res.render('admin/index', {
+                        pendingProducts: pendingProducts,
+                        totalUsers: userRows[0].total,
+                        openReportsCount: openReports.length,
+                        activeReservationsCount: activeReservations.length
+                    });
+                });
+            });
+        });
     });
 });
 
@@ -246,6 +369,44 @@ app.post('/admin/products/:id/reject', (req, res) => {
             return res.send('Error rejecting product');
         }
         res.redirect('/admin');
+    });
+});
+
+// Purchase History - everything the logged-in user has bought
+app.get('/purchase-history', isLoggedIn, (req, res) => {
+    purchaseModel.getPurchasesByBuyer(req.session.user.id, (error, purchases) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving purchase history');
+        }
+        res.render('purchaseHistory', { purchases: purchases });
+    });
+});
+
+// Sales History - the seller's own listings (pending/selling/reserved),
+// filterable by status, plus everything they've completed selling
+app.get('/sales-history', isLoggedIn, (req, res) => {
+    const status = req.query.status || 'all';
+
+    productModel.getSellerListings(req.session.user.id, status, (listingsError, listings) => {
+        if (listingsError) {
+            console.error('Database query error:', listingsError.message);
+            return res.send('Error retrieving your listings');
+        }
+
+        purchaseModel.getSalesBySeller(req.session.user.id, (error, sales) => {
+            if (error) {
+                console.error('Database query error:', error.message);
+                return res.send('Error retrieving sales history');
+            }
+            res.render('salesHistory', {
+                listings: listings,
+                sales: sales,
+                selectedStatus: status,
+                errors: req.flash('error'),
+                success: req.flash('success')
+            });
+        });
     });
 });
 
@@ -844,34 +1005,25 @@ app.get('/profile', isLoggedIn, (req, res) => {
 
         const user = results[0];
 
-        // The navbar dropdown needs the category list, same as the other pages.
-        categoryModel.getAllCategories((catError, categories) => {
-            if (catError) {
-                console.error('Database query error:', catError.message);
-                return res.send('Error retrieving categories');
-            }
+        // Display-only values worked out from what the users table stores.
+        const username = user.email.split('@')[0];
 
-            // Display-only values worked out from what the users table stores.
-            const username = user.email.split('@')[0];
+        const initials = user.name
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2)
+            .map(word => word.charAt(0).toUpperCase())
+            .join('');
 
-            const initials = user.name
-                .trim()
-                .split(/\s+/)
-                .slice(0, 2)
-                .map(word => word.charAt(0).toUpperCase())
-                .join('');
+        const memberSince = new Date(user.created_at).toLocaleDateString('en-GB', {
+            day: 'numeric', month: 'long', year: 'numeric'
+        });
 
-            const memberSince = new Date(user.created_at).toLocaleDateString('en-GB', {
-                day: 'numeric', month: 'long', year: 'numeric'
-            });
-
-            res.render('profile', {
-                user: user,
-                categories: categories,
-                username: username,
-                initials: initials,
-                memberSince: memberSince
-            });
+        res.render('profile', {
+            user: user,
+            username: username,
+            initials: initials,
+            memberSince: memberSince
         });
     });
 });
@@ -911,21 +1063,22 @@ app.get('/users/:id', isLoggedIn, (req, res) => {
 
             const stats = statsResults[0];
 
-            categoryModel.getAllCategories((catError, categories) => {
-                if (catError) {
-                    console.error('Database query error:', catError.message);
-                    return res.send('Error retrieving categories');
-                }
+            // Percentage of reviews that were 4 stars or better.
+            const positivePercent = stats.reviewCount > 0
+                ? Math.round((stats.goodRatings / stats.reviewCount) * 100)
+                : 0;
 
-                // Percentage of reviews that were 4 stars or better.
-                const positivePercent = stats.reviewCount > 0
-                    ? Math.round((stats.goodRatings / stats.reviewCount) * 100)
-                    : 0;
+            // This member's currently-selling products, for the "Listings by X" section.
+            productModel.getSellingProductsBySeller(profileId, (productsError, sellingProducts) => {
+                if (productsError) {
+                    console.error('Database query error:', productsError.message);
+                    return res.send('Error retrieving member listings');
+                }
 
                 res.render('publicProfile', {
                     profile: profile,
                     stats: stats,
-                    categories: categories,
+                    sellingProducts: sellingProducts,
                     username: profile.name.trim().toLowerCase().replace(/\s+/g, '.'),
                     initials: getInitials(profile.name),
                     firstName: profile.name.trim().split(/\s+/)[0],
