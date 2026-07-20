@@ -29,20 +29,9 @@
         <a href="/wishlist">Wishlist</a>
         <a href="/cart">Cart</a>
 
-        <div class="dropdown">
-            <a href="/profile">Account</a>
-            <div class="dropdown-menu">
-                <a href="/profile">My Profile</a>
-                <a href="/my-listings">My Listings</a>
-                <a href="/purchase-history">Purchase History</a>
-                <a href="/sales-history">Sales History</a>
-                <a href="/reservations">My Reservations</a>
-                <a href="/notifications">Notifications</a>
-                <a href="/logout">Logout</a>
-            </div>
-        </div>
-
         <a href="/sell" class="nav-cta">+ Sell an Item</a>
+
+        <%- include('partials/navUser') %>
     </div>
 </nav>
 

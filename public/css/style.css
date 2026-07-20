@@ -1677,3 +1677,330 @@ a.sellerbar-btn:hover {
     .sellerbar-actions { width: 100%; }
     .sellerbar-btn { flex: 1; text-align: center; }
 }
+
+
+/* ============================================================
+   Navbar user corner, sign-up and profile editing
+                                       (Hein Thu Nyi Nyi)
+   ============================================================ */
+
+/* ----- Circular avatar in the navbar ----- */
+.nav-user {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.nav-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    background: linear-gradient(135deg, var(--green-dark), var(--green-light));
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: box-shadow 0.18s, border-color 0.18s;
+}
+
+.nav-avatar:hover,
+.nav-user:hover .nav-avatar {
+    border-color: #c8e6c9;
+    box-shadow: 0 4px 12px rgba(27, 107, 52, 0.28);
+}
+
+/* The menu that drops from the avatar */
+.nav-user-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    min-width: 214px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(27, 107, 52, 0.14);
+    padding: 8px;
+    z-index: 200;
+}
+
+.nav-user:hover .nav-user-menu,
+.nav-user:focus-within .nav-user-menu {
+    display: block;
+}
+
+/* Invisible bridge so the menu does not close while the mouse moves down */
+.nav-user::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 100%;
+    height: 12px;
+}
+
+.nav-user-head {
+    padding: 8px 12px 10px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 6px;
+}
+
+.nav-user-name {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.nav-user-email {
+    display: block;
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 2px;
+    word-break: break-all;
+}
+
+.nav-user-menu a {
+    display: block;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    color: var(--text);
+    text-decoration: none;
+}
+
+.nav-user-menu a:hover {
+    background: var(--bg);
+    color: var(--green-dark);
+}
+
+.nav-user-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 6px 0;
+}
+
+.nav-user-logout { color: #a83228 !important; }
+.nav-user-logout:hover { background: #fdecea !important; color: #a83228 !important; }
+
+/* Logged-out buttons */
+.nav-login-link { font-weight: 600; }
+
+.nav-signup-btn {
+    background: linear-gradient(135deg, var(--green-dark), var(--green-light));
+    color: #fff !important;
+    padding: 9px 18px;
+    border-radius: 24px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* ----- Sign-up form extras ----- */
+.auth-gap { height: 16px; }
+
+.auth-optional {
+    font-weight: 400;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.auth-email-group {
+    display: flex;
+    align-items: stretch;
+}
+
+.auth-email-input {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: none;
+}
+
+.auth-email-suffix {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-left: none;
+    border-radius: 0 10px 10px 0;
+    white-space: nowrap;
+}
+
+.auth-link {
+    color: var(--green-dark);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.auth-link:hover { text-decoration: underline; }
+
+/* ----- Editable profile fields ----- */
+.profile-field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 6px 0;
+    color: var(--text);
+}
+
+.profile-input {
+    width: 100%;
+    padding: 10px 13px;
+    font-size: 14px;
+    font-family: inherit;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fbfdfc;
+    outline: none;
+    margin-bottom: 14px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.profile-input:focus {
+    border-color: var(--green-light);
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
+}
+
+.profile-input-locked {
+    background: #f0f3f1;
+    color: var(--muted);
+    cursor: not-allowed;
+    margin-bottom: 6px;
+}
+
+.profile-field-hint {
+    margin: 0 0 16px 0;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--muted);
+}
+
+/* Password confirmation box before saving */
+.profile-confirm-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px 4px;
+    margin: 4px 0 16px;
+}
+
+.profile-save-btn {
+    padding: 10px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    color: #fff;
+    background: linear-gradient(135deg, var(--green-dark), var(--green-light));
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.profile-save-btn:hover { opacity: 0.92; }
+
+/* Collapsible sections */
+.profile-details-toggle { margin-top: 6px; }
+
+.profile-toggle-summary {
+    cursor: pointer;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--green-dark);
+    padding: 8px 0;
+    list-style: none;
+}
+
+.profile-toggle-summary::-webkit-details-marker { display: none; }
+.profile-toggle-summary::before { content: "\25B8  "; }
+details[open] .profile-toggle-summary::before { content: "\25BE  "; }
+
+.profile-toggle-danger { color: #a83228; }
+
+.profile-toggle-body {
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+}
+
+/* ----- Close account ----- */
+.profile-danger-card { border-color: #f5c6c2; }
+.profile-danger-title { color: #a83228 !important; }
+
+.profile-danger-text {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--muted);
+}
+
+.profile-danger-btn {
+    padding: 10px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    color: #fff;
+    background: #c0392b;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.profile-danger-btn:hover { background: #a83228; }
+
+/* ----- Admin sign-ups page ----- */
+.reg-count-badge {
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #fff6dd;
+    color: #8a6100;
+    border: 1px solid #f0dfae;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.reg-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+
+.reg-head h4 { margin: 0; }
+
+.reg-status {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 3px 10px;
+    border-radius: 20px;
+}
+
+.reg-status-pending  { background: #fff6dd; color: #8a6100; border: 1px solid #f0dfae; }
+.reg-status-rejected { background: #fdecea; color: #a83228; border: 1px solid #f5c6c2; }
+
+.reg-rejected-note {
+    margin: 10px 0 0 0;
+    font-size: 12.5px;
+    color: #a83228;
+}
+
+.reg-actions { display: flex; flex-direction: column; gap: 10px; min-width: 210px; }
+.reg-actions form { display: flex; flex-direction: column; gap: 6px; }
+
+@media (max-width: 700px) {
+    .nav-user-menu { right: auto; left: 0; }
+    .reg-actions { min-width: 0; }
+}
