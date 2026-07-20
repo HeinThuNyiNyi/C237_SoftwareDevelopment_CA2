@@ -14,10 +14,16 @@
 <body>
 <nav class="navbar">
     <a class="brand" href="/"><span class="brand-icon">&#9851;</span><span><span class="campus">Campus</span><span class="cycle">Cycle</span></span></a>
-    <div class="nav-links"><a href="/">Home</a><a href="/browse">Browse</a></div>
+    <div class="nav-links">
+        <a href="/">Home</a><a href="/browse">Browse</a>
+        <% if (currentUser) { %><a href="/reservations">My Reservations</a><% } %>
+    </div>
 </nav>
 
 <main class="admin-section product-detail-shell">
+    <% if (errors && errors.length > 0) { %><div class="alert alert-error"><%= errors[0] %></div><% } %>
+    <% if (success && success.length > 0) { %><div class="alert alert-success"><%= success[0] %></div><% } %>
+
     <article class="review-card product-detail-card">
         <div class="product-detail-image">
             <% if (product.image) { %><img src="/images/<%= product.image %>" alt="<%= product.name %>"><% } %>
@@ -33,7 +39,6 @@
             <p class="review-meta">Contact: <%= product.contact_info || 'Ask the seller' %></p>
             <p class="product-description"><%= product.description || 'No description provided.' %></p>
 
-            <!-- 产品详情页也读取真实评分；链接只负责查看公开评价。 -->
             <a href="/details/<%= product.id %>/ratings" class="rating product-detail-rating">
                 <span class="rating-stars" aria-hidden="true">
                     <% for (let star = 1; star <= 5; star++) { %><span class="<%= star <= Math.round(average) ? 'is-filled' : '' %>">★</span><% } %>
@@ -45,8 +50,17 @@
             <div class="product-actions-full product-detail-actions">
                 <button class="btn-outline">&#9825; Add to Wishlist</button>
                 <button class="btn-primary">Add to Cart</button>
-                <button class="btn-secondary">Buy Now</button>
-                <button class="btn-secondary">Reserve Now</button>
+                <% if (product.status === 'selling' && product.quantity > 0) { %>
+                    <% if (!currentUser) { %>
+                        <a href="/login" class="btn-secondary">Log in to Reserve</a>
+                    <% } else if (currentUser.id === product.seller_id) { %>
+                        <button class="btn-secondary" disabled>Your Product</button>
+                    <% } else { %>
+                        <a href="/reservations/add/<%= product.id %>" class="btn-secondary">Reserve Now</a>
+                    <% } %>
+                <% } else { %>
+                    <button class="btn-secondary" disabled>Unavailable</button>
+                <% } %>
                 <a href="/details/<%= product.id %>/ratings" class="btn-outline">Read Reviews</a>
                 <button class="btn-report" title="Report this listing">&#9873;</button>
             </div>

@@ -8,35 +8,42 @@
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+
 <nav class="navbar">
     <a class="brand" href="/"><span class="brand-icon">&#9851;</span><span><span class="campus">Campus</span><span class="cycle">Cycle</span></span></a>
-    <div class="nav-links"><a href="/">Home</a><a href="/browse">Browse</a></div>
+    <div class="nav-links"><a href="/">Home</a><a href="/browse">Browse</a><a href="/profile">Account</a></div>
 </nav>
 
-<section class="hero"><h1>Sell an Item</h1><p>Your listing goes to an admin before it appears on Browse.</p></section>
-<main class="form-shell">
-    <% if (success) { %><p class="page-message is-success"><%= success %></p><% } %>
-    <% if (error) { %><p class="page-message is-error"><%= error %></p><% } %>
-    <form action="/sell" method="POST" class="listing-form">
-        <label>Product Name<input type="text" name="name" class="reason-input" required></label>
-        <label>Category
-            <select name="categoryId" class="ban-select" required>
-                <% categories.forEach((category) => { %><option value="<%= category.id %>"><%= category.name %></option><% }) %>
-            </select>
-        </label>
-        <label class="full-field">Description<textarea name="description" class="reason-input" rows="4" required></textarea></label>
-        <label>Price ($)<input type="number" name="price" class="reason-input" min="0" step="0.01" required></label>
-        <label>Condition
-            <select name="condition" class="ban-select" required>
-                <option value="new">New</option><option value="like_new">Like New</option><option value="used">Used</option><option value="worn">Worn</option>
-            </select>
-        </label>
-        <label>Quantity<input type="number" name="quantity" class="reason-input" min="1" value="1" required></label>
-        <label>Image filename<input type="text" name="image" class="reason-input" placeholder="e.g. mouse.jpg" required></label>
-        <label class="full-field">Contact / Collection Details<input type="text" name="contactInfo" class="reason-input" placeholder="e.g. WhatsApp 9123 4567" required></label>
-        <button type="submit" class="btn-primary full-field">Submit for Approval</button>
-    </form>
-</main>
+<section class="hero">
+    <h1>Sell an Item</h1>
+    <p>Your listing goes to the admin for approval before it appears on Browse.</p>
+</section>
+
+<div class="admin-section">
+    <div class="review-card" style="display:block;">
+        <form action="/sell" method="POST" enctype="multipart/form-data">
+            <div style="margin-bottom:14px;"><label for="name">Product Name</label><br><input type="text" id="name" name="name" class="reason-input" required></div>
+            <div style="margin-bottom:14px;">
+                <label for="categoryId">Category</label><br>
+                <select id="categoryId" name="categoryId" class="ban-select" required>
+                    <% categories.forEach(function(category) { %><option value="<%= category.id %>"><%= category.name %></option><% }); %>
+                </select>
+            </div>
+            <div style="margin-bottom:14px;"><label for="description">Description</label><br><textarea id="description" name="description" class="reason-input" rows="3" required></textarea></div>
+            <div style="margin-bottom:14px;"><label for="price">Price ($)</label><br><input type="number" id="price" name="price" class="reason-input" min="0" step="0.01" required></div>
+            <div style="margin-bottom:14px;">
+                <label for="condition">Condition</label><br>
+                <select id="condition" name="condition" class="ban-select" required>
+                    <option value="new">New</option><option value="like_new">Like New</option><option value="used">Used</option><option value="worn">Worn</option>
+                </select>
+            </div>
+            <div style="margin-bottom:14px;"><label for="quantity">Quantity</label><br><input type="number" id="quantity" name="quantity" class="reason-input" min="1" value="1" required></div>
+            <div style="margin-bottom:14px;"><label for="image">Image</label><br><input type="file" id="image" name="image" accept="image/*" required></div>
+            <div style="margin-bottom:14px;"><label for="contactInfo">Contact / Collection Details</label><br><input type="text" id="contactInfo" name="contactInfo" class="reason-input" placeholder="e.g. WhatsApp 9123 4567" required></div>
+            <button type="submit" class="btn-primary">Submit for Approval</button>
+        </form>
+    </div>
+</div>
 
 <footer class="footer">&copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.</footer>
 </body>

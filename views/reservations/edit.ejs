@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Reservation - CampusCycle</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+    <div class="brand">
+        <div class="brand-icon">&#9851;</div>
+        <span class="campus">Campus</span><span class="cycle">Cycle</span>
+    </div>
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/browse">Browse</a>
+        <a href="/reservations">My Reservations</a>
+    </div>
+</nav>
+
+<main class="reservation-page">
+    <a href="/reservations/<%= reservation.id %>" class="back-link">&larr; Back to reservation</a>
+
+    <section class="reservation-form-card">
+        <h1>Edit Appointment Request</h1>
+        <p class="reservation-help">Changing a seller proposal sends the reservation back to <strong>pending</strong> for the seller to review.</p>
+
+        <% if (errors && errors.length > 0) { %>
+            <div class="alert alert-error"><%= errors[0] %></div>
+        <% } %>
+
+        <form action="/reservations/<%= reservation.id %>/update" method="POST" class="reservation-form">
+            <label for="appointmentDate">Preferred date</label>
+            <input id="appointmentDate" name="appointmentDate" type="date"
+                   value="<%= reservation.appointment_date ? new Date(reservation.appointment_date).toISOString().slice(0, 10) : '' %>" required>
+
+            <label for="appointmentTime">Preferred time</label>
+            <input id="appointmentTime" name="appointmentTime" type="time"
+                   value="<%= reservation.appointment_time ? String(reservation.appointment_time).slice(0, 5) : '' %>" required>
+
+            <label for="meetingLocation">Meeting location</label>
+            <input id="meetingLocation" name="meetingLocation" type="text" maxlength="255"
+                   value="<%= reservation.meeting_location || '' %>" required>
+
+            <div class="reservation-actions">
+                <button type="submit" class="btn-primary">Update Request</button>
+                <a href="/reservations/<%= reservation.id %>" class="btn-outline">Cancel</a>
+            </div>
+        </form>
+    </section>
+</main>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+</body>
+</html>

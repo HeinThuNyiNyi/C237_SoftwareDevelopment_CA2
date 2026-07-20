@@ -1,5 +1,5 @@
--- CampusCycle 数据库结构
--- 商品、用户、交易字段跟随 Thiha-Aung 分支；评分部分保留本地匿名和媒体功能。
+-- CampusCycle database schema
+-- Combines login, marketplace, reservation, and extended rating features.
 
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS reservations (
     appointment_date DATE NULL,
     appointment_time TIME NULL,
     meeting_location VARCHAR(255),
-    status ENUM('pending', 'confirmed', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
+    status ENUM('pending', 'proposed', 'confirmed', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_reservation_product FOREIGN KEY (product_id)
@@ -88,7 +88,6 @@ CREATE TABLE IF NOT EXISTS reservations (
         REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- purchases 中每一行就是一笔已完成交易，因此不再设置 status 字段。
 CREATE TABLE IF NOT EXISTS purchases (
     id INT AUTO_INCREMENT PRIMARY KEY,
     product_id INT NOT NULL,
@@ -107,7 +106,6 @@ CREATE TABLE IF NOT EXISTS purchases (
         REFERENCES reservations(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 核心字段与 Thiha-Aung 一致；is_anonymous/updated_at 是本地评价 UI 所需扩展。
 CREATE TABLE IF NOT EXISTS ratings (
     id INT AUTO_INCREMENT PRIMARY KEY,
     product_id INT NOT NULL,

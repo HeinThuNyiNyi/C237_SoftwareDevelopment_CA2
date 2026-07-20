@@ -77,12 +77,7 @@
                 <p class="product-price">$<%= Number(product.price).toFixed(2) %></p>
                 <p class="seller-info">Seller: <%= product.sellerName %></p>
 
-                <!-- 评分来自数据库；点击后只进入公开评价列表。 -->
-                <a
-                    href="/details/<%= product.id %>/ratings"
-                    class="rating"
-                    aria-label="<%= count ? `${average} out of 5 from ${count} reviews` : 'No verified reviews yet' %>"
-                >
+                <a href="/details/<%= product.id %>/ratings" class="rating" aria-label="<%= count ? `${average} out of 5 from ${count} reviews` : 'No verified reviews yet' %>">
                     <span class="rating-stars" aria-hidden="true">
                         <% for (let star = 1; star <= 5; star++) { %>
                             <span class="<%= star <= filledStars ? 'is-filled' : '' %>">★</span>
