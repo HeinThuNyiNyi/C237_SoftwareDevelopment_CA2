@@ -32,6 +32,8 @@ ratingInputs.forEach((input) => {
 starButtons.forEach((star) => {
     star.addEventListener('mouseenter', () => paintStars(Number(star.dataset.rating)));
     star.addEventListener('mouseleave', () => paintStars(getSelectedRating()));
+    star.addEventListener('focus', () => paintStars(Number(star.dataset.rating)));
+    star.addEventListener('blur', () => paintStars(getSelectedRating()));
 });
 
 paintStars(getSelectedRating());

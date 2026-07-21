@@ -36,6 +36,12 @@
                 <p class="review-meta">Price paid: $<%= Number(purchase.price).toFixed(2) %></p>
                 <p class="review-meta">Purchased: <%= new Date(purchase.purchased_at).toLocaleDateString() %></p>
             </div>
+            <div class="review-actions review-actions-compact">
+                <a href="/details/<%= purchase.product_id %>/ratings" class="btn-outline">View reviews</a>
+                <a href="/details/<%= purchase.product_id %>/rating/new" class="btn-primary">
+                    <%= purchase.ratingId ? 'Edit my review' : 'Write a review' %>
+                </a>
+            </div>
         </div>
     <% }); %>
 

@@ -8,6 +8,12 @@
 </head>
 <body>
 
+<%
+    const reviewDateFormatter = new Intl.DateTimeFormat('en-SG', {
+        day: 'numeric', month: 'short', year: 'numeric'
+    });
+%>
+
 <%- include('partials/navbar') %>
 
 
@@ -135,18 +141,40 @@
         <% } %>
     </div>
 
-    <!-- ===== Their reviews (ratings team owns this) ===== -->
+    <!-- ===== Verified reviews received as a seller ===== -->
     <div class="pubprof-card">
         <div class="pubprof-section-head">
             <h3>Reviews</h3>
         </div>
-        <% if (stats.reviewCount === 0) { %>
+        <% if (receivedReviews.length === 0) { %>
             <p class="pubprof-placeholder">No reviews yet.</p>
         <% } else { %>
-            <p class="pubprof-placeholder">
-                <%= stats.reviewCount %> review<%= stats.reviewCount === 1 ? '' : 's' %> received.
-                Individual reviews will appear here once the reviews page is connected.
-            </p>
+            <div class="pubprof-reviews">
+                <% receivedReviews.forEach(function(review) { %>
+                    <article class="pubprof-review">
+                        <div class="pubprof-review-head">
+                            <div>
+                                <strong><%= review.authorLabel %></strong>
+                                <span class="verified-label">Verified purchase</span>
+                            </div>
+                            <time datetime="<%= new Date(review.updatedAt).toISOString() %>">
+                                <%= reviewDateFormatter.format(new Date(review.updatedAt)) %>
+                            </time>
+                        </div>
+                        <div class="pubprof-review-stars" aria-label="<%= review.rating %> out of 5 stars">
+                            <% for (let star = 1; star <= 5; star++) { %>
+                                <span class="<%= star <= review.rating ? 'is-filled' : '' %>" aria-hidden="true">★</span>
+                            <% } %>
+                        </div>
+                        <p class="pubprof-review-product">
+                            Review for <a href="/products/<%= review.productId %>"><%= review.productName %></a>
+                        </p>
+                        <p class="pubprof-review-comment">
+                            <%= review.comment || 'This buyer left a star rating without a written comment.' %>
+                        </p>
+                    </article>
+                <% }); %>
+            </div>
         <% } %>
     </div>
 
