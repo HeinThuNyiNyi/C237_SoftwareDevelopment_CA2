@@ -12,20 +12,7 @@
 </head>
 <body>
 
-<nav class="navbar">
-    <div class="brand">
-        <div class="brand-icon">&#9851;</div>
-        <span class="campus">Campus</span><span class="cycle">Cycle</span>
-    </div>
-
-    <div class="nav-links">
-        <a href="/">Home</a>
-        <a href="/browse">Browse</a>
-        <% if (currentUser) { %>
-            <a href="/reservations">My Reservations</a>
-        <% } %>
-    </div>
-</nav>
+<%- include('partials/navbar') %>
 
 <!-- ============================================================
      Seller bar (Hein Thu Nyi Nyi)
@@ -66,7 +53,6 @@
     <div class="sellerbar-actions">
         <a href="/users/<%= sellerInfo.id %>" class="sellerbar-btn">View profile</a>
         <button class="sellerbar-btn" disabled>Seller history</button>
-        <a href="/report_user/<%= sellerInfo.id %>" class="sellerbar-btn">Report seller</a>
     </div>
 </div>
 <% } %>
@@ -123,7 +109,7 @@
                     <button class="btn-secondary" disabled>Unavailable</button>
                 <% } %>
                 <a href="/details/<%= product.id %>/ratings" class="btn-outline">Give Rating</a>
-                <a href="/report_user/<%= product.seller_id %>" class="btn-report" title="Report Seller">&#9873;</a>
+                <a href="/user_report/<%= product.id %>" class="btn-report" title="Report this listing">&#9873;</a>
             </div>
         </div>
     </div>

@@ -6,152 +6,62 @@
 <title>CampusCycle Admin</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
+<body class="admin-body">
 
-<nav class="navbar">
-    <div class="brand">
-        <div class="brand-icon">&#9851;</div>
-        <span class="campus">Campus</span><span class="cycle">Cycle</span>
-    </div>
+<%- include('../partials/adminNavbar') %>
 
-    <div class="nav-links">
-        <a href="/admin">Dashboard</a>
+<div class="admin-layout">
+    <%- include('../partials/adminSidebar') %>
 
-        <div class="dropdown">
-            <a href="/admin/products">Products</a>
-            <div class="dropdown-menu">
-                <a href="/admin/products?status=pending">Pending</a>
-                <a href="/admin/products?status=selling">Approved</a>
-                <a href="/admin/products?status=rejected">Rejected</a>
+    <div class="admin-main">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value"><%= pendingProducts.length %></div>
+                <div class="stat-label">Pending Posts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value"><%= totalUsers %></div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <a href="/admin/reports" class="stat-card">
+                <div class="stat-value"><%= openReportsCount %></div>
+                <div class="stat-label">Open Reports</div>
+            </a>
+            <div class="stat-card">
+                <div class="stat-value"><%= activeReservationsCount %></div>
+                <div class="stat-label">Active Reservations</div>
             </div>
         </div>
 
-        <a href="/admin/users">Users</a>
-        <a href="/admin/reports">Reports</a>
-        <a href="/admin/reservations">Reservations</a>
-        <a href="/logout">Logout</a>
-    </div>
-</nav>
+        <!-- Pending product posts: approve / reject with stored reason -->
+        <div class="admin-section">
+            <h2>Pending Product Posts</h2>
 
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-value"><%= pendingProducts.length %></div>
-        <div class="stat-label">Pending Posts</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-value">128</div>
-        <div class="stat-label">Total Users</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-value">3</div>
-        <div class="stat-label">Open Reports</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-value">7</div>
-        <div class="stat-label">Active Reservations</div>
-    </div>
-</div>
+            <% if (pendingProducts.length === 0) { %>
+                <p>No pending posts right now.</p>
+            <% } %>
 
-<!-- Pending product posts: approve / reject with stored reason -->
-<div class="admin-section">
-    <h2>Pending Product Posts</h2>
-
-    <% if (pendingProducts.length === 0) { %>
-        <p>No pending posts right now.</p>
-    <% } %>
-
-    <% pendingProducts.forEach(function(product) { %>
-        <div class="review-card">
-            <div class="review-thumb">
-                <img src="/images/<%= product.image %>" alt="<%= product.name %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
-            </div>
-            <div class="review-body">
-                <h4><%= product.name %></h4>
-                <p class="review-meta">Seller: <%= product.sellerName %> &middot; Category: <%= product.categoryName %> &middot; $<%= Number(product.price).toFixed(2) %></p>
-                <p class="review-meta">Submitted: <%= new Date(product.created_at).toLocaleDateString() %></p>
-            </div>
-            <div class="review-actions">
-                <form action="/admin/products/<%= product.id %>/approve" method="POST">
-                    <button type="submit" class="btn-primary">Approve Post</button>
-                </form>
-                <form action="/admin/products/<%= product.id %>/reject" method="POST">
-                    <input type="text" name="reason" class="reason-input" placeholder="Reason for rejection">
-                    <button type="submit" class="btn-outline">Reject Post</button>
-                </form>
-            </div>
-        </div>
-    <% }); %>
-</div>
-
-<!-- User reports: approve (ban) / dismiss -->
-<div class="admin-section">
-    <h2>Reported Items</h2>
-
-    <div class="review-card">
-        <div class="review-thumb">&#9873;</div>
-        <div class="review-body">
-            <h4>Reported: "Vintage Guitar" listing</h4>
-            <p class="review-meta">Reported by: Ei Htet Htet Tun &middot; Category: Suspicious / Fake item</p>
-            <p class="review-meta">"Photos look copied from another marketplace site."</p>
-        </div>
-        <div class="review-actions">
-            <select class="ban-select">
-                <option value="">No ban</option>
-                <option value="1">Ban 1 day</option>
-                <option value="7">Ban 7 days</option>
-                <option value="30">Ban 30 days</option>
-                <option value="permanent">Ban permanently</option>
-            </select>
-            <button class="btn-primary">Approve Report</button>
-            <button class="btn-outline">Dismiss Report</button>
-        </div>
-    </div>
-</div>
-
-<!-- User account management: ban / unban -->
-<div class="admin-section">
-    <h2>User Accounts</h2>
-
-    <div class="user-row">
-        <div>
-            <div class="user-name">Hein Thu Nyi Nyi</div>
-            <div class="user-email">heinthu@example.com &middot; Status: Active</div>
-        </div>
-        <div class="user-actions">
-            <select class="ban-select" style="width:150px;">
-                <option value="1">1 day</option>
-                <option value="7">7 days</option>
-                <option value="30">30 days</option>
-            </select>
-            <button class="btn-outline">Ban User</button>
-        </div>
-    </div>
-
-    <div class="user-row">
-        <div>
-            <div class="user-name">Denna</div>
-            <div class="user-email">denna@example.com &middot; Status: Banned until 2026-07-25</div>
-        </div>
-        <div class="user-actions">
-            <button class="btn-secondary">Cancel Ban</button>
-        </div>
-    </div>
-</div>
-
-<!-- Reservations overview (view only) -->
-<div class="admin-section">
-    <h2>Reservations</h2>
-
-    <div class="review-card">
-        <div class="review-thumb">&#128197;</div>
-        <div class="review-body">
-            <h4>C237 Textbook Bundle</h4>
-            <p class="review-meta">Buyer: Zhen Cheng Chao &middot; Seller: Mya Mya</p>
-            <p class="review-meta">Appointment: 2026-07-22, 3:00 PM &middot; Location: Library Level 2</p>
-            <p class="review-meta">Status: Confirmed</p>
-        </div>
-        <div class="review-actions">
-            <a href="/admin/reservations/1" class="btn-outline">View Details</a>
+            <% pendingProducts.forEach(function(product) { %>
+                <div class="review-card">
+                    <div class="review-thumb">
+                        <img src="/images/<%= product.image %>" alt="<%= product.name %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
+                    </div>
+                    <div class="review-body">
+                        <h4><%= product.name %></h4>
+                        <p class="review-meta">Seller: <%= product.sellerName %> &middot; Category: <%= product.categoryName %> &middot; $<%= Number(product.price).toFixed(2) %></p>
+                        <p class="review-meta">Submitted: <%= new Date(product.created_at).toLocaleDateString() %></p>
+                    </div>
+                    <div class="review-actions">
+                        <form action="/admin/products/<%= product.id %>/approve" method="POST">
+                            <button type="submit" class="btn-primary">Approve Post</button>
+                        </form>
+                        <form action="/admin/products/<%= product.id %>/reject" method="POST">
+                            <input type="text" name="reason" class="reason-input" placeholder="Reason for rejection">
+                            <button type="submit" class="btn-outline">Reject Post</button>
+                        </form>
+                    </div>
+                </div>
+            <% }); %>
         </div>
     </div>
 </div>

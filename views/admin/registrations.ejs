@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign-Ups &mdash; CampusCycle Admin</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="admin-body">
+
+<%- include('../partials/adminNavbar') %>
+
+<div class="admin-layout">
+    <%- include('../partials/adminSidebar') %>
+
+    <div class="admin-main">
+    <div class="admin-section">
+
+    <h2>Student Sign-Ups
+        <% if (pendingCount > 0) { %>
+            <span class="reg-count-badge"><%= pendingCount %> waiting</span>
+        <% } %>
+    </h2>
+
+    <% if (errors && errors.length > 0) { %>
+        <div class="auth-alert auth-alert-error">
+            <% errors.forEach(function(message) { %><p><%= message %></p><% }); %>
+        </div>
+    <% } %>
+
+    <% if (success && success.length > 0) { %>
+        <div class="auth-alert auth-alert-success">
+            <% success.forEach(function(message) { %><p><%= message %></p><% }); %>
+        </div>
+    <% } %>
+
+    <% if (registrations.length === 0) { %>
+        <p>No sign-ups have been submitted.</p>
+    <% } %>
+
+    <% registrations.forEach(function(registration) { %>
+        <div class="review-card">
+
+            <div class="review-body">
+                <div class="reg-head">
+                    <h4><%= registration.name %></h4>
+                    <span class="reg-status reg-status-<%= registration.status %>">
+                        <%= registration.status %>
+                    </span>
+                </div>
+
+                <p class="review-meta">
+                    <%= registration.email %>
+                    <% if (registration.phone) { %> &middot; <%= registration.phone %><% } %>
+                </p>
+                <p class="review-meta">
+                    Applied <%= new Date(registration.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) %>
+                </p>
+
+                <% if (registration.status === 'rejected') { %>
+                    <p class="reg-rejected-note">
+                        Rejected<%= registration.reviewerName ? ' by ' + registration.reviewerName : '' %>:
+                        <%= registration.rejection_reason %>
+                    </p>
+                <% } %>
+            </div>
+
+            <div class="review-actions reg-actions">
+
+                <% if (registration.status === 'pending') { %>
+
+                    <!-- Approve: creates the real account in the users table -->
+                    <form action="/admin/registrations/<%= registration.id %>/approve" method="POST"
+                          onsubmit="return confirm('Approve <%= registration.name %>? They will be able to log in immediately.');">
+                        <button type="submit" class="btn-primary">Approve Account</button>
+                    </form>
+
+                    <!-- Reject: keeps the record with a reason -->
+                    <form action="/admin/registrations/<%= registration.id %>/reject" method="POST">
+                        <input type="text" name="reason" class="reason-input" placeholder="Reason for rejection">
+                        <button type="submit" class="btn-outline">Reject</button>
+                    </form>
+
+                <% } else { %>
+
+                    <!-- Delete: clears an old rejected request off the list -->
+                    <form action="/admin/registrations/<%= registration.id %>/delete" method="POST"
+                          onsubmit="return confirm('Delete this sign-up record permanently?');">
+                        <button type="submit" class="btn-outline">Delete Record</button>
+                    </form>
+
+                <% } %>
+
+            </div>
+        </div>
+    <% }); %>
+
+    </div>
+    </div>
+</div>
+
+</body>
+</html>

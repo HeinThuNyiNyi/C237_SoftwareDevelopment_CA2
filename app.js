@@ -4,13 +4,14 @@ const mysql = require('mysql2');
 const session = require('express-session');
 const flash = require('connect-flash');
 const multer = require('multer');
-const bcrypt = require('bcrypt');
+const { hashPassword, verifyPassword } = require('./utils/hash');
 const fs = require('fs');
 const path = require('path');
 const productModel = require('./models/productModel');
 const categoryModel = require('./models/categoryModel');
 const reportModel = require('./models/reportModel');
 const userModel = require('./models/userModel');
+const registrationModel = require('./models/registrationModel');
 const reservationModel = require('./models/reservationModel');
 const ratingModel = require('./models/ratingModel');
 const purchaseModel = require('./models/purchaseModel');
@@ -59,14 +60,25 @@ app.use(session({
 
 app.use(flash());
 
+// Makes the logged-in user available to every EJS page as `currentUser`,
+// so the navbar avatar works without each route having to pass it in.
+// Routes that already pass their own currentUser are unaffected - a value
+// given to res.render always wins over res.locals.  (Hein Thu Nyi Nyi)
+app.use((req, res, next) => {
+    if (req.session.user) {
+        res.locals.currentUser = Object.assign({}, req.session.user, {
+            initials: getInitials(req.session.user.name)
+        });
+    } else {
+        res.locals.currentUser = null;
+    }
+    next();
+});
+
 // Setting up EJS
 app.set('view engine', 'ejs');
 
 // ==================== Thiha Aung's routes ====================
-
-// TODO: replace with req.session.user.id once the login feature is done.
-// Using the seeded 'Thiha Aung' user (id 2) as the seller for now.
-const TEMP_SELLER_ID = 2;
 
 // Homepage - the listings page is now Browse, so "/" just goes straight there.
 app.get('/', (req, res) => {
@@ -174,7 +186,7 @@ app.get('/products/:id', (req, res) => {
 });
 
 // Sell page - show the add-product form
-app.get('/sell', (req, res) => {
+app.get('/sell', isLoggedIn, (req, res) => {
     categoryModel.getAllCategories((error, categories) => {
         if (error) {
             console.error('Database query error:', error.message);
@@ -185,7 +197,7 @@ app.get('/sell', (req, res) => {
 });
 
 // Sell page - submit a new product (always starts as 'pending' until admin approves it)
-app.post('/sell', upload.single('image'), (req, res) => {
+app.post('/sell', isLoggedIn, upload.single('image'), (req, res) => {
     const { name, categoryId, description, price, condition, quantity, contactInfo } = req.body;
 
     let image;
@@ -196,7 +208,7 @@ app.post('/sell', upload.single('image'), (req, res) => {
     }
 
     productModel.createProduct({
-        sellerId: TEMP_SELLER_ID,
+        sellerId: req.session.user.id,
         categoryId: categoryId,
         name: name,
         description: description,
@@ -215,14 +227,141 @@ app.post('/sell', upload.single('image'), (req, res) => {
     });
 });
 
-// Admin dashboard - shows products waiting for approval
+// Edit a listing - show the pre-filled form. Only the seller can edit their
+// own post, and only while it's still 'selling' (not pending/reserved/sold out).
+app.get('/products/:id/edit', isLoggedIn, (req, res) => {
+    productModel.getProductById(req.params.id, (error, results) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving product');
+        }
+        if (results.length === 0) {
+            return res.status(404).send('Product not found');
+        }
+
+        const product = results[0];
+        if (product.seller_id !== req.session.user.id || product.status !== 'selling') {
+            req.flash('error', 'You can only edit your own listings while they are selling.');
+            return res.redirect('/sales-history');
+        }
+
+        categoryModel.getAllCategories((catError, categories) => {
+            if (catError) {
+                console.error('Database query error:', catError.message);
+                return res.send('Error retrieving categories');
+            }
+            res.render('editProduct', { product: product, categories: categories });
+        });
+    });
+});
+
+// Edit a listing - save the changes
+app.post('/products/:id/edit', isLoggedIn, upload.single('image'), (req, res) => {
+    const productId = req.params.id;
+
+    productModel.getProductById(productId, (error, results) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving product');
+        }
+        if (results.length === 0) {
+            return res.status(404).send('Product not found');
+        }
+
+        const product = results[0];
+        if (product.seller_id !== req.session.user.id || product.status !== 'selling') {
+            req.flash('error', 'You can only edit your own listings while they are selling.');
+            return res.redirect('/sales-history');
+        }
+
+        const { name, categoryId, description, price, condition, quantity, contactInfo } = req.body;
+        const image = req.file ? req.file.filename : product.image; // keep the old image unless a new one was uploaded
+
+        productModel.updateProduct(productId, {
+            categoryId: categoryId,
+            name: name,
+            description: description,
+            price: price,
+            condition: condition,
+            quantity: quantity,
+            image: image,
+            contactInfo: contactInfo
+        }, (updateError) => {
+            if (updateError) {
+                console.error('Error updating product:', updateError.message);
+                return res.send('Error updating product');
+            }
+            req.flash('success', 'Listing updated.');
+            res.redirect('/sales-history');
+        });
+    });
+});
+
+// Delete a listing - only the seller, and only while it's still 'selling'
+app.post('/products/:id/delete', isLoggedIn, (req, res) => {
+    const productId = req.params.id;
+
+    productModel.getProductById(productId, (error, results) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving product');
+        }
+        if (results.length === 0) {
+            return res.status(404).send('Product not found');
+        }
+
+        const product = results[0];
+        if (product.seller_id !== req.session.user.id || product.status !== 'selling') {
+            req.flash('error', 'You can only delete your own listings while they are selling.');
+            return res.redirect('/sales-history');
+        }
+
+        productModel.deleteProduct(productId, (deleteError) => {
+            if (deleteError) {
+                console.error('Error deleting product:', deleteError.message);
+                return res.send('Error deleting product');
+            }
+            req.flash('success', 'Listing deleted.');
+            res.redirect('/sales-history');
+        });
+    });
+});
+
+// Admin dashboard - stats overview (real counts) plus the products still
+// waiting for approval.
 app.get('/admin', (req, res) => {
     productModel.getPendingProducts((error, pendingProducts) => {
         if (error) {
             console.error('Database query error:', error.message);
             return res.send('Error retrieving pending products');
         }
-        res.render('admin/index', { pendingProducts: pendingProducts });
+        userModel.countAllUsers((userError, userRows) => {
+            if (userError) {
+                console.error('Database query error:', userError.message);
+                return res.send('Error retrieving user count');
+            }
+            reportModel.getAllReports('pending', (reportError, openReports) => {
+                if (reportError) {
+                    console.error('Database query error:', reportError.message);
+                    return res.send('Error retrieving reports');
+                }
+                reservationModel.getAllReservationsForAdmin('all', (reservationError, reservations) => {
+                    if (reservationError) {
+                        console.error('Database query error:', reservationError.message);
+                        return res.send('Error retrieving reservations');
+                    }
+                    const activeReservations = reservations.filter((reservation) =>
+                        ['pending', 'proposed', 'confirmed'].includes(reservation.status)
+                    );
+                    res.render('admin/index', {
+                        pendingProducts: pendingProducts,
+                        totalUsers: userRows[0].total,
+                        openReportsCount: openReports.length,
+                        activeReservationsCount: activeReservations.length
+                    });
+                });
+            });
+        });
     });
 });
 
@@ -246,6 +385,44 @@ app.post('/admin/products/:id/reject', (req, res) => {
             return res.send('Error rejecting product');
         }
         res.redirect('/admin');
+    });
+});
+
+// Purchase History - everything the logged-in user has bought
+app.get('/purchase-history', isLoggedIn, (req, res) => {
+    purchaseModel.getPurchasesByBuyer(req.session.user.id, (error, purchases) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving purchase history');
+        }
+        res.render('purchaseHistory', { purchases: purchases });
+    });
+});
+
+// Sales History - the seller's own listings (pending/selling/reserved),
+// filterable by status, plus everything they've completed selling
+app.get('/sales-history', isLoggedIn, (req, res) => {
+    const status = req.query.status || 'all';
+
+    productModel.getSellerListings(req.session.user.id, status, (listingsError, listings) => {
+        if (listingsError) {
+            console.error('Database query error:', listingsError.message);
+            return res.send('Error retrieving your listings');
+        }
+
+        purchaseModel.getSalesBySeller(req.session.user.id, (error, sales) => {
+            if (error) {
+                console.error('Database query error:', error.message);
+                return res.send('Error retrieving sales history');
+            }
+            res.render('salesHistory', {
+                listings: listings,
+                sales: sales,
+                selectedStatus: status,
+                errors: req.flash('error'),
+                success: req.flash('success')
+            });
+        });
     });
 });
 
@@ -479,7 +656,7 @@ app.get('/user_report/:productId', isLoggedIn, (req, res) => {
         if (results.length === 0) {
             return res.status(404).send('Product not found');
         }
-        res.render('user_report', { product: results[0], currentUser: req.session.user });
+        res.render('user_report', { product: results[0] });
     });
 });
 
@@ -516,7 +693,7 @@ app.post('/user_report', isLoggedIn, upload.single('evidenceImage'), (req, res) 
 // Show the "report this user" form
 app.get('/report_user/:userId', isLoggedIn, (req, res) => {
     const userId = req.params.userId;
-    userModel.findPublicById(userId, (error, results) => {
+    userModel.getUserById(userId, (error, results) => {
         if (error) {
             console.error('Database query error:', error.message);
             return res.send('Error retrieving user');
@@ -524,7 +701,7 @@ app.get('/report_user/:userId', isLoggedIn, (req, res) => {
         if (results.length === 0) {
             return res.status(404).send('User not found');
         }
-        res.render('report_user', { reportedUser: results[0], currentUser: req.session.user });
+        res.render('report_user', { reportedUser: results[0] });
     });
 });
 
@@ -565,7 +742,7 @@ app.get('/my_reports', isLoggedIn, (req, res) => {
             console.error('Database query error:', error.message);
             return res.send('Error retrieving your reports');
         }
-        res.render('my_reports', { reports: reports, currentUser: req.session.user });
+        res.render('my_reports', { reports: reports });
     });
 });
 
@@ -577,7 +754,7 @@ app.get('/my_reports/:id/edit', isLoggedIn, (req, res) => {
         if (report.reporter_id !== req.session.user.id || report.status !== 'pending') {
             return res.redirect('/my_reports');
         }
-        res.render('edit_report', { report: report, currentUser: req.session.user });
+        res.render('edit_report', { report: report });
     });
 });
 
@@ -775,7 +952,8 @@ app.get('/login', isGuest, (req, res) => {
     res.render('auth/login', {
         errors: req.flash('error'),
         success: req.flash('success'),
-        oldEmail: req.flash('email')[0] || ''  // keeps the typed email after a failed attempt
+        oldEmail: req.flash('email')[0] || '',  // keeps the typed email after a failed attempt
+        justClosed: req.query.closed === '1'    // shown after closing an account
     });
 });
 
@@ -802,17 +980,20 @@ app.post('/login', validateLogin, (req, res) => {
 
         const user = results[0];
 
-        // Compare the typed password against the stored bcrypt hash.
-        bcrypt.compare(password, user.password, (compareError, isMatch) => {
-            if (compareError) {
-                console.error('Error checking password:', compareError.message);
-                req.flash('error', 'Something went wrong. Please try again.');
-                return res.redirect('/login');
-            }
+        // Hash the typed password and compare it with the stored SHA-1 hash.
+        {
+            const isMatch = verifyPassword(password, user.password);
 
             if (!isMatch) {
                 req.flash('error', 'Incorrect email or password.');
                 req.flash('email', email);
+                return res.redirect('/login');
+            }
+
+            // A closed account is stopped here. Checked after the password so
+            // the message is not shown to someone guessing email addresses.
+            if (user.is_active === 0) {
+                req.flash('error', 'This account has been closed. Please contact the school administrator if you need it reopened.');
                 return res.redirect('/login');
             }
 
@@ -849,7 +1030,7 @@ app.post('/login', validateLogin, (req, res) => {
             // Admins and normal users land on different home pages.
             const destination = user.role === 'admin' ? '/admin' : '/';
             res.redirect(destination);
-        });
+        }
     });
 });
 
@@ -870,34 +1051,27 @@ app.get('/profile', isLoggedIn, (req, res) => {
 
         const user = results[0];
 
-        // The navbar dropdown needs the category list, same as the other pages.
-        categoryModel.getAllCategories((catError, categories) => {
-            if (catError) {
-                console.error('Database query error:', catError.message);
-                return res.send('Error retrieving categories');
-            }
+        // Display-only values worked out from what the users table stores.
+        const username = user.email.split('@')[0];
 
-            // Display-only values worked out from what the users table stores.
-            const username = user.email.split('@')[0];
+        const initials = user.name
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2)
+            .map(word => word.charAt(0).toUpperCase())
+            .join('');
 
-            const initials = user.name
-                .trim()
-                .split(/\s+/)
-                .slice(0, 2)
-                .map(word => word.charAt(0).toUpperCase())
-                .join('');
+        const memberSince = new Date(user.created_at).toLocaleDateString('en-GB', {
+            day: 'numeric', month: 'long', year: 'numeric'
+        });
 
-            const memberSince = new Date(user.created_at).toLocaleDateString('en-GB', {
-                day: 'numeric', month: 'long', year: 'numeric'
-            });
-
-            res.render('profile', {
-                user: user,
-                categories: categories,
-                username: username,
-                initials: initials,
-                memberSince: memberSince
-            });
+        res.render('profile', {
+            user: user,
+            username: username,
+            initials: initials,
+            memberSince: memberSince,
+            errors: req.flash('error'),
+            success: req.flash('success')
         });
     });
 });
@@ -937,21 +1111,22 @@ app.get('/users/:id', isLoggedIn, (req, res) => {
 
             const stats = statsResults[0];
 
-            categoryModel.getAllCategories((catError, categories) => {
-                if (catError) {
-                    console.error('Database query error:', catError.message);
-                    return res.send('Error retrieving categories');
-                }
+            // Percentage of reviews that were 4 stars or better.
+            const positivePercent = stats.reviewCount > 0
+                ? Math.round((stats.goodRatings / stats.reviewCount) * 100)
+                : 0;
 
-                // Percentage of reviews that were 4 stars or better.
-                const positivePercent = stats.reviewCount > 0
-                    ? Math.round((stats.goodRatings / stats.reviewCount) * 100)
-                    : 0;
+            // This member's currently-selling products, for the "Listings by X" section.
+            productModel.getSellingProductsBySeller(profileId, (productsError, sellingProducts) => {
+                if (productsError) {
+                    console.error('Database query error:', productsError.message);
+                    return res.send('Error retrieving member listings');
+                }
 
                 res.render('publicProfile', {
                     profile: profile,
                     stats: stats,
-                    categories: categories,
+                    sellingProducts: sellingProducts,
                     username: profile.name.trim().toLowerCase().replace(/\s+/g, '.'),
                     initials: getInitials(profile.name),
                     firstName: profile.name.trim().split(/\s+/)[0],
@@ -963,6 +1138,322 @@ app.get('/users/:id', isLoggedIn, (req, res) => {
                 });
             });
         });
+    });
+});
+
+// ============ Student sign-up (Hein Thu Nyi Nyi) ============
+//
+// A sign-up is NOT an account. It waits in pending_registrations until an
+// admin approves it, and only then does a row appear in users.
+
+const RP_DOMAIN = '@myrp.edu.sg';
+
+// Show the sign-up form.
+app.get('/register', isGuest, (req, res) => {
+    res.render('auth/register', {
+        errors: req.flash('error'),
+        success: req.flash('success'),
+        old: req.flash('old')[0] || {}
+    });
+});
+
+// CREATE - submit a sign-up for admin approval.
+app.post('/register', isGuest, (req, res) => {
+    const name = (req.body.name || '').trim();
+    const username = (req.body.username || '').trim().toLowerCase();
+    const phone = (req.body.phone || '').trim();
+    const password = req.body.password || '';
+    const confirmPassword = req.body.confirmPassword || '';
+
+    // The form only asks for the part before the @, and the domain is fixed
+    // here on the server. That way a non-RP address cannot be submitted even
+    // if someone edits the page.
+    const email = username + RP_DOMAIN;
+
+    // Keep what they typed so a failed attempt does not clear the form.
+    const keep = () => req.flash('old', { name: name, username: username, phone: phone });
+
+    if (!name || !username || !password) {
+        req.flash('error', 'Please fill in your name, school email and password.');
+        keep();
+        return res.redirect('/register');
+    }
+
+    // Only the characters an RP email actually uses.
+    if (!/^[a-z0-9._-]+$/.test(username)) {
+        req.flash('error', 'Your school email can only contain letters, numbers, dots, dashes and underscores.');
+        keep();
+        return res.redirect('/register');
+    }
+
+    if (password.length < 8) {
+        req.flash('error', 'Your password must be at least 8 characters long.');
+        keep();
+        return res.redirect('/register');
+    }
+
+    if (password !== confirmPassword) {
+        req.flash('error', 'The two passwords do not match.');
+        keep();
+        return res.redirect('/register');
+    }
+
+    // Already a real account?
+    userModel.findByEmail(email, (userError, existingUsers) => {
+        if (userError) {
+            console.error('Database query error:', userError.message);
+            return res.send('Error checking your details');
+        }
+
+        if (existingUsers.length > 0) {
+            req.flash('error', 'An account already exists for that school email. Try logging in instead.');
+            keep();
+            return res.redirect('/register');
+        }
+
+        // Already waiting for approval?
+        registrationModel.findByEmail(email, (regError, existingRegistrations) => {
+            if (regError) {
+                console.error('Database query error:', regError.message);
+                return res.send('Error checking your details');
+            }
+
+            if (existingRegistrations.length > 0) {
+                const existing = existingRegistrations[0];
+                if (existing.status === 'pending') {
+                    req.flash('error', 'A sign-up for that email is already waiting for approval.');
+                } else {
+                    req.flash('error', 'A previous sign-up for that email was rejected. Please contact the school administrator.');
+                }
+                keep();
+                return res.redirect('/register');
+            }
+
+            // Hash before storing, so even a waiting sign-up never holds a
+            // readable password.
+            registrationModel.createRegistration({
+                name: name,
+                email: email,
+                password: hashPassword(password),
+                phone: phone || null
+            }, (error) => {
+                if (error) {
+                    console.error('Error creating registration:', error.message);
+                    return res.send('Error creating your sign-up');
+                }
+                req.flash('success', 'Thank you. Your sign-up has been sent to the school administrator for approval. You will be able to log in once it is approved.');
+                res.redirect('/login');
+            });
+        });
+    });
+});
+
+
+// ---- Admin review of sign-ups ----
+
+// READ - list every sign-up.
+app.get('/admin/registrations', isLoggedIn, isAdmin, (req, res) => {
+    registrationModel.getAllRegistrations((error, registrations) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving sign-ups');
+        }
+
+        res.render('admin/registrations', {
+            registrations: registrations,
+            pendingCount: registrations.filter(r => r.status === 'pending').length,
+            errors: req.flash('error'),
+            success: req.flash('success')
+        });
+    });
+});
+
+// Approve - copy the sign-up into users, then remove the request.
+app.post('/admin/registrations/:id/approve', isLoggedIn, isAdmin, (req, res) => {
+    registrationModel.getRegistrationById(req.params.id, (findError, results) => {
+        if (findError || results.length === 0) {
+            req.flash('error', 'That sign-up could not be found.');
+            return res.redirect('/admin/registrations');
+        }
+
+        const registration = results[0];
+
+        // The password is already hashed, so it is carried across as-is and
+        // never re-hashed - hashing it twice would stop the student logging in.
+        userModel.createUser({
+            name: registration.name,
+            email: registration.email,
+            password: registration.password,
+            phone: registration.phone
+        }, (createError) => {
+            if (createError) {
+                console.error('Error creating user:', createError.message);
+                req.flash('error', 'Could not create that account. The email may already be in use.');
+                return res.redirect('/admin/registrations');
+            }
+
+            // Only delete the request once the account definitely exists.
+            registrationModel.deleteRegistration(req.params.id, (deleteError) => {
+                if (deleteError) {
+                    console.error('Error clearing registration:', deleteError.message);
+                }
+                req.flash('success', registration.name + ' can now log in.');
+                res.redirect('/admin/registrations');
+            });
+        });
+    });
+});
+
+// UPDATE - reject a sign-up, keeping the reason.
+app.post('/admin/registrations/:id/reject', isLoggedIn, isAdmin, (req, res) => {
+    const reason = (req.body.reason || '').trim() || 'No reason given';
+
+    registrationModel.rejectRegistration(req.params.id, reason, req.session.user.id, (error) => {
+        if (error) {
+            console.error('Error rejecting registration:', error.message);
+            return res.send('Error rejecting the sign-up');
+        }
+        req.flash('success', 'Sign-up rejected.');
+        res.redirect('/admin/registrations');
+    });
+});
+
+// DELETE - clear a rejected sign-up off the list.
+app.post('/admin/registrations/:id/delete', isLoggedIn, isAdmin, (req, res) => {
+    registrationModel.deleteRegistration(req.params.id, (error) => {
+        if (error) {
+            console.error('Error deleting registration:', error.message);
+            return res.send('Error deleting the sign-up');
+        }
+        req.flash('success', 'Sign-up record deleted.');
+        res.redirect('/admin/registrations');
+    });
+});
+
+
+// ============ Profile management (Hein Thu Nyi Nyi) ============
+//
+// Every change asks for the current password first. Without that, anyone
+// who found an unattended logged-in browser could change the password and
+// take over the account.
+
+// UPDATE - name and phone number.
+app.post('/profile/update', isLoggedIn, (req, res) => {
+    const name = (req.body.name || '').trim();
+    const phone = (req.body.phone || '').trim();
+    const currentPassword = req.body.currentPassword || '';
+
+    if (!name) {
+        req.flash('error', 'Your name cannot be empty.');
+        return res.redirect('/profile');
+    }
+
+    if (phone && !/^[0-9+\s-]{6,20}$/.test(phone)) {
+        req.flash('error', 'Please enter a valid contact number.');
+        return res.redirect('/profile');
+    }
+
+    userModel.findById(req.session.user.id, (findError, results) => {
+        if (findError || results.length === 0) {
+            console.error('Database query error:', findError && findError.message);
+            return res.send('Error updating your profile');
+        }
+
+        {
+            if (!verifyPassword(currentPassword, results[0].password)) {
+                req.flash('error', 'That password is not correct, so nothing was changed.');
+                return res.redirect('/profile');
+            }
+
+            userModel.updateProfile(req.session.user.id, name, phone || null, (error) => {
+                if (error) {
+                    console.error('Error updating profile:', error.message);
+                    return res.send('Error updating your profile');
+                }
+
+                // Keep the session in step so the navbar shows the new name.
+                req.session.user.name = name;
+
+                req.flash('success', 'Your details have been updated.');
+                res.redirect('/profile');
+            });
+        }
+    });
+});
+
+// UPDATE - change password.
+app.post('/profile/password', isLoggedIn, (req, res) => {
+    const currentPassword = req.body.currentPassword || '';
+    const newPassword = req.body.newPassword || '';
+    const confirmPassword = req.body.confirmPassword || '';
+
+    if (newPassword.length < 8) {
+        req.flash('error', 'Your new password must be at least 8 characters long.');
+        return res.redirect('/profile');
+    }
+
+    if (newPassword !== confirmPassword) {
+        req.flash('error', 'The two new passwords do not match.');
+        return res.redirect('/profile');
+    }
+
+    userModel.findById(req.session.user.id, (findError, results) => {
+        if (findError || results.length === 0) {
+            console.error('Database query error:', findError && findError.message);
+            return res.send('Error changing your password');
+        }
+
+        {
+            if (!verifyPassword(currentPassword, results[0].password)) {
+                req.flash('error', 'Your current password is not correct, so nothing was changed.');
+                return res.redirect('/profile');
+            }
+
+            userModel.updatePassword(req.session.user.id, hashPassword(newPassword), (error) => {
+                if (error) {
+                    console.error('Error updating password:', error.message);
+                    return res.send('Error changing your password');
+                }
+                req.flash('success', 'Your password has been changed.');
+                res.redirect('/profile');
+            });
+        }
+    });
+});
+
+// Close the account. The row is kept - see deactivateAccount in userModel
+// for why deleting it would take other students' records with it.
+app.post('/profile/close', isLoggedIn, (req, res) => {
+    const currentPassword = req.body.currentPassword || '';
+    const confirmText = (req.body.confirmText || '').trim().toUpperCase();
+
+    // Typing CLOSE is a deliberate second step, so this cannot happen by
+    // accidentally clicking a button.
+    if (confirmText !== 'CLOSE') {
+        req.flash('error', 'Please type CLOSE to confirm you want to close your account.');
+        return res.redirect('/profile');
+    }
+
+    userModel.findById(req.session.user.id, (findError, results) => {
+        if (findError || results.length === 0) {
+            console.error('Database query error:', findError && findError.message);
+            return res.send('Error closing your account');
+        }
+
+        {
+            if (!verifyPassword(currentPassword, results[0].password)) {
+                req.flash('error', 'That password is not correct, so your account was not closed.');
+                return res.redirect('/profile');
+            }
+
+            userModel.deactivateAccount(req.session.user.id, (error) => {
+                if (error) {
+                    console.error('Error closing account:', error.message);
+                    return res.send('Error closing your account');
+                }
+                req.session.destroy(() => res.redirect('/login?closed=1'));
+            });
+        }
     });
 });
 

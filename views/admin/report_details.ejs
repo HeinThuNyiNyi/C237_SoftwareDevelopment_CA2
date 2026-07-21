@@ -6,27 +6,20 @@
 <title>Report #<%= report.id %> - CampusCycle Admin</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
+<body class="admin-body">
 
-<nav class="navbar">
-    <div class="brand">
-        <div class="brand-icon">&#9851;</div>
-        <span class="campus">Campus</span><span class="cycle">Cycle</span>
-    </div>
-
-    <div class="nav-links">
-        <a href="/admin">Dashboard</a>
-        <a href="/admin/admin_report">Reports</a>
-        <a href="/logout">Logout</a>
-    </div>
-</nav>
+<%- include('../partials/adminNavbar') %>
 
 <section class="hero">
     <h1>Report #<%= report.id %></h1>
     <p>Category: <%= report.category.replace('_', ' ') %> &middot; Status: <%= report.status %></p>
 </section>
 
-<div class="admin-section">
+<div class="admin-layout">
+    <%- include('../partials/adminSidebar') %>
+
+    <div class="admin-main">
+    <div class="admin-section">
 
     <!-- Report details -->
     <div class="review-card">
@@ -71,7 +64,7 @@
 
     <!-- Resolution -->
     <% if (report.status === 'pending') { %>
-        <div class="review-card" style="display:block;">
+        <div class="review-card form-card">
             <h4 style="margin-bottom:12px;">Resolve this report</h4>
 
             <form action="/admin/admin_report/<%= report.id %>/approve" method="POST" style="margin-bottom:14px;">
@@ -130,6 +123,8 @@
     <% } %>
 
     <a href="/admin/admin_report" class="btn-outline">&larr; Back to Reports</a>
+    </div>
+    </div>
 </div>
 
 </body>

@@ -8,66 +8,7 @@
 </head>
 <body>
 
-<nav class="navbar">
-    <div class="brand">
-        <div class="brand-icon">&#9851;</div>
-        <span class="campus">Campus</span><span class="cycle">Cycle</span>
-    </div>
-
-    <div class="nav-links">
-        <a href="/">Home</a>
-
-        <div class="dropdown">
-            <a href="/browse">Browse</a>
-            <div class="dropdown-menu">
-                <% categories.forEach(function(category) { %>
-                    <a href="/browse?category=<%= category.id %>"><%= category.name %></a>
-                <% }); %>
-            </div>
-        </div>
-
-        <a href="/wishlist">Wishlist</a>
-        <a href="/cart">Cart</a>
-
-        <div class="dropdown">
-            <a href="/profile">Account</a>
-            <div class="dropdown-menu">
-                <a href="/profile">My Profile</a>
-                <a href="/my-listings">My Listings</a>
-                <a href="/purchase-history">Purchase History</a>
-                <a href="/sales-history">Sales History</a>
-                <a href="/reservations">My Reservations</a>
-                <a href="/notifications">Notifications</a>
-                <a href="/logout">Logout</a>
-            </div>
-        </div>
-
-        <a href="/sell" class="nav-cta">+ Sell an Item</a>
-    </div>
-</nav>
-
-<section class="hero">
-    <h1>Browse Listings</h1>
-    <p>Find what you need from fellow students.</p>
-</section>
-
-<form action="/browse" method="GET" class="admin-section" style="padding-top:0; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
-    <input type="text" name="q" value="<%= search %>" placeholder="Search by product name" class="reason-input" style="max-width:260px; margin-top:0;">
-
-    <select name="category" class="ban-select" style="width:200px; margin-top:0;">
-        <option value="">All Categories</option>
-        <% categories.forEach(function(category) { %>
-            <option value="<%= category.id %>" <% if (String(selectedCategory) === String(category.id)) { %>selected<% } %>><%= category.name %></option>
-        <% }); %>
-    </select>
-
-    <button type="submit" class="btn-primary">Search</button>
-    <a href="/browse" class="btn-outline">Clear</a>
-</form>
-
-<div class="section-title">
-    <h2><%= products.length %> Listing<%= products.length === 1 ? '' : 's' %> Found</h2>
-</div>
+<%- include('partials/navbar') %>
 
 <div class="product-grid">
 

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Purchase History - CampusCycle</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<%- include('partials/navbar') %>
+
+<section class="hero">
+    <h1>Purchase History</h1>
+    <p>Everything you've bought on CampusCycle.</p>
+</section>
+
+<div class="admin-section">
+
+    <% if (purchases.length === 0) { %>
+        <p>You haven't bought anything yet.</p>
+    <% } %>
+
+    <% purchases.forEach(function(purchase) { %>
+        <div class="review-card">
+            <div class="review-thumb">
+                <% if (purchase.productImage) { %>
+                    <img src="/images/<%= purchase.productImage %>" alt="<%= purchase.productName %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
+                <% } else { %>
+                    &#128230;
+                <% } %>
+            </div>
+            <div class="review-body">
+                <h4><%= purchase.productName %></h4>
+                <p class="review-meta">Seller: <%= purchase.sellerName %></p>
+                <p class="review-meta">Price paid: $<%= Number(purchase.price).toFixed(2) %></p>
+                <p class="review-meta">Purchased: <%= new Date(purchase.purchased_at).toLocaleDateString() %></p>
+            </div>
+        </div>
+    <% }); %>
+
+</div>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+
+</body>
+</html>
