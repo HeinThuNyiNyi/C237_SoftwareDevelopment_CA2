@@ -1728,6 +1728,69 @@ a.profile-side-item:hover {
     color: var(--muted);
 }
 
+.pubprof-reviews {
+    display: grid;
+    gap: 14px;
+}
+
+.pubprof-review {
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg);
+}
+
+.pubprof-review-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.pubprof-review-head strong,
+.pubprof-review-head .verified-label {
+    display: block;
+}
+
+.pubprof-review-head .verified-label {
+    color: var(--green-dark);
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 3px;
+    text-transform: uppercase;
+}
+
+.pubprof-review-head time,
+.pubprof-review-product {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.pubprof-review-stars {
+    color: #cbd3cc;
+    letter-spacing: 2px;
+    margin-top: 10px;
+}
+
+.pubprof-review-stars .is-filled {
+    color: #e0a325;
+}
+
+.pubprof-review-product {
+    margin: 8px 0 0;
+}
+
+.pubprof-review-product a {
+    color: var(--green-dark);
+    font-weight: 600;
+}
+
+.pubprof-review-comment {
+    margin: 10px 0 0;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
 @media (max-width: 700px) {
     .pubprof-wrap { padding: 0 16px; }
     .pubprof-top { flex-direction: column; align-items: flex-start; }

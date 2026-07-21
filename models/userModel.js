@@ -93,14 +93,29 @@ function getPublicStats(id, callback) {
             (SELECT COUNT(*) FROM purchases
               WHERE seller_id = ?)                                   AS itemsSold,
 
-            (SELECT COUNT(*) FROM ratings
-              WHERE seller_id = ?)                                   AS reviewCount,
+            (SELECT COUNT(*) FROM ratings r
+              WHERE r.seller_id = ?
+                AND EXISTS (
+                    SELECT 1 FROM purchases p
+                    WHERE p.buyer_id = r.buyer_id
+                      AND p.product_id = r.product_id
+                ))                                                    AS reviewCount,
 
-            (SELECT ROUND(AVG(rating), 1) FROM ratings
-              WHERE seller_id = ?)                                   AS averageRating,
+            (SELECT ROUND(AVG(r.rating), 1) FROM ratings r
+              WHERE r.seller_id = ?
+                AND EXISTS (
+                    SELECT 1 FROM purchases p
+                    WHERE p.buyer_id = r.buyer_id
+                      AND p.product_id = r.product_id
+                ))                                                    AS averageRating,
 
-            (SELECT COUNT(*) FROM ratings
-              WHERE seller_id = ? AND rating >= 4)                   AS goodRatings
+            (SELECT COUNT(*) FROM ratings r
+              WHERE r.seller_id = ? AND r.rating >= 4
+                AND EXISTS (
+                    SELECT 1 FROM purchases p
+                    WHERE p.buyer_id = r.buyer_id
+                      AND p.product_id = r.product_id
+                ))                                                    AS goodRatings
     `;
     db.query(sql, [id, id, id, id, id], callback);
 }

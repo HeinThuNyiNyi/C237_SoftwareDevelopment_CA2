@@ -16,7 +16,7 @@ const registrationModel = require('./models/registrationModel');
 const reservationModel = require('./models/reservationModel');
 const ratingModel = require('./models/ratingModel');
 const purchaseModel = require('./models/purchaseModel');
-const { ratingUpload, uploadDirectory } = require('./middleware/ratingUpload');
+const { ratingUpload, uploadDirectory, getUploadedFiles } = require('./middleware/ratingUpload');
 const { isLoggedIn, isAdmin, isGuest, validateLogin } = require('./middleware/auth');
 
 const app = express();
@@ -441,13 +441,6 @@ function toItemView(product) {
     };
 }
 
-function getUploadedFiles(req) {
-    return [
-        ...(req.files?.images || []),
-        ...(req.files?.videos || [])
-    ];
-}
-
 function removeUploadedFiles(files) {
     for (const file of files) {
         fs.unlink(file.path, () => {});
@@ -461,8 +454,8 @@ function removeStoredMedia(mediaPaths) {
     }
 }
 
-// Writing a review requires an account that actually completed a purchase
-// of this product.
+// New reviews require a completed purchase. An existing review remains
+// manageable by its owner if historical purchase rows are later archived.
 function requirePurchasedProduct(req, res, next) {
     const productId = Number(req.params.id);
     const buyerId = req.session.user?.id || null;
@@ -480,14 +473,28 @@ function requirePurchasedProduct(req, res, next) {
         if (error) {
             return next(error);
         }
-        if (!purchase) {
-            req.flash('error', 'Only verified buyers can review this item');
-            return res.redirect(`/details/${productId}/ratings`);
+        if (purchase) {
+            req.ratingBuyerId = buyerId;
+            req.ratingPurchase = purchase;
+            return next();
         }
 
-        req.ratingBuyerId = buyerId;
-        req.ratingPurchase = purchase;
-        next();
+        // Keep an existing review manageable even if old purchase records are
+        // later archived. This fallback never allows creation of a new review.
+        ratingModel.findByProductAndBuyer(productId, buyerId, (ratingError, existingRating) => {
+            if (ratingError) {
+                return next(ratingError);
+            }
+            if (!existingRating) {
+                req.flash('error', 'Only verified buyers can review this item');
+                return res.redirect(`/details/${productId}/ratings`);
+            }
+
+            req.ratingBuyerId = buyerId;
+            req.ratingPurchase = { seller_id: existingRating.seller_id };
+            req.existingRating = existingRating;
+            next();
+        });
     });
 }
 
@@ -549,7 +556,7 @@ app.get('/details/:id/ratings', (req, res, next) => {
                             ratingSummary,
                             reviews,
                             isLoggedIn: true,
-                            canReview: Boolean(purchase),
+                            canReview: Boolean(purchase) || Boolean(existingRating),
                             hasExistingReview: Boolean(existingRating),
                             success: req.flash('success')[0] || null,
                             error: req.flash('error')[0] || null
@@ -578,6 +585,20 @@ app.get('/details/:id/rating/new', requirePurchasedProduct, (req, res, next) => 
             return res.status(404).send('Product not found');
         }
         const product = results[0];
+
+        if (req.existingRating) {
+            return res.render('details/rating', {
+                pageTitle: 'Update your review',
+                item: toItemView(product),
+                itemId: productId,
+                selectedRating: req.existingRating.rating,
+                comment: req.existingRating.comment || '',
+                isAnonymous: req.existingRating.is_anonymous || false,
+                existingMedia: req.existingRating.media || [],
+                success: null,
+                error: req.flash('error')[0] || null
+            });
+        }
 
         ratingModel.findByProductAndBuyer(productId, req.ratingBuyerId, (ratingError, existingRating) => {
             if (ratingError) {
@@ -638,6 +659,36 @@ app.post('/details/:id/rating/new', requirePurchasedProduct, ratingUpload, (req,
         removeStoredMedia(result.oldMediaPaths);
         req.flash('success', 'Your rating has been saved');
         res.redirect(`/details/${productId}/ratings`);
+    });
+});
+
+// A signed-in buyer may remove only their own review. This does not require a
+// fresh purchase lookup because an existing verified review is sufficient,
+// and it remains deletable even if historical purchase data later changes.
+app.post('/details/:id/rating/delete', (req, res, next) => {
+    const productId = Number(req.params.id);
+    const buyerId = Number(req.session.user?.id);
+
+    if (!Number.isInteger(productId) || productId <= 0) {
+        return res.status(400).send('Invalid product ID');
+    }
+    if (!Number.isInteger(buyerId) || buyerId <= 0) {
+        req.flash('error', 'Sign in to manage your review');
+        return res.redirect(`/details/${productId}/ratings`);
+    }
+
+    ratingModel.deleteByProductAndBuyer(productId, buyerId, (error, result) => {
+        if (error) {
+            return next(error);
+        }
+        if (!result.deleted) {
+            req.flash('error', 'No review was found for this account');
+            return res.redirect(`/details/${productId}/ratings`);
+        }
+
+        removeStoredMedia(result.oldMediaPaths);
+        req.flash('success', 'Your review has been deleted');
+        return res.redirect(`/details/${productId}/ratings`);
     });
 });
 
@@ -1208,18 +1259,26 @@ app.get('/users/:id', isLoggedIn, (req, res) => {
                     return res.send('Error retrieving member listings');
                 }
 
-                res.render('publicProfile', {
-                    profile: profile,
-                    stats: stats,
-                    sellingProducts: sellingProducts,
-                    username: profile.name.trim().toLowerCase().replace(/\s+/g, '.'),
-                    initials: getInitials(profile.name),
-                    firstName: profile.name.trim().split(/\s+/)[0],
-                    lastSeen: describeLastSeen(profile.last_active),
-                    membershipLength: describeMembership(profile.created_at),
-                    positivePercent: positivePercent,
-                    isGoodSeller: stats.reviewCount >= 3 && positivePercent >= 90,
-                    isMe: req.session.user.id === profile.id
+                ratingModel.getPublicReviewsBySellerId(profileId, (reviewsError, receivedReviews) => {
+                    if (reviewsError) {
+                        console.error('Database query error:', reviewsError.message);
+                        return res.send('Error retrieving member reviews');
+                    }
+
+                    res.render('publicProfile', {
+                        profile: profile,
+                        stats: stats,
+                        sellingProducts: sellingProducts,
+                        receivedReviews: receivedReviews,
+                        username: profile.name.trim().toLowerCase().replace(/\s+/g, '.'),
+                        initials: getInitials(profile.name),
+                        firstName: profile.name.trim().split(/\s+/)[0],
+                        lastSeen: describeLastSeen(profile.last_active),
+                        membershipLength: describeMembership(profile.created_at),
+                        positivePercent: positivePercent,
+                        isGoodSeller: stats.reviewCount >= 3 && positivePercent >= 90,
+                        isMe: req.session.user.id === profile.id
+                    });
                 });
             });
         });
