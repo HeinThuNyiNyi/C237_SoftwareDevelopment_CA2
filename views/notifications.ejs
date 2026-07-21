@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notifications - CampusCycle</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<%- include('partials/navbar') %>
+
+<section class="hero">
+    <h1>Notifications</h1>
+    <p>Updates on reports you have submitted.</p>
+</section>
+
+<div class="admin-section">
+    <% if (notifications.length === 0) { %>
+        <p>You have no notifications yet.</p>
+    <% } %>
+
+    <% notifications.forEach(function(notification) { %>
+        <div class="review-card">
+            <div class="review-thumb">&#128276;</div>
+            <div class="review-body">
+                <h4><%= notification.message %></h4>
+                <p class="review-meta">Submitted: <%= new Date(notification.created_at).toLocaleString() %></p>
+            </div>
+            <% if (notification.link) { %>
+                <div class="review-actions">
+                    <a href="<%= notification.link %>" class="btn-outline">View</a>
+                </div>
+            <% } %>
+        </div>
+    <% }); %>
+</div>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+
+</body>
+</html>

@@ -10,6 +10,7 @@ const path = require('path');
 const productModel = require('./models/productModel');
 const categoryModel = require('./models/categoryModel');
 const reportModel = require('./models/reportModel');
+const notificationModel = require('./models/notificationModel');
 const userModel = require('./models/userModel');
 const registrationModel = require('./models/registrationModel');
 const reservationModel = require('./models/reservationModel');
@@ -656,6 +657,10 @@ app.get('/user_report/:productId', isLoggedIn, (req, res) => {
         if (results.length === 0) {
             return res.status(404).send('Product not found');
         }
+        if (results[0].seller_id === req.session.user.id) {
+            req.flash('error', 'You cannot report your own listing.');
+            return res.redirect('/products/' + productId);
+        }
         res.render('user_report', { product: results[0] });
     });
 });
@@ -663,6 +668,11 @@ app.get('/user_report/:productId', isLoggedIn, (req, res) => {
 // Submit a product report
 app.post('/user_report', isLoggedIn, upload.single('evidenceImage'), (req, res) => {
     const { reported_product_id, reported_user_id, category, description } = req.body;
+
+    if (Number(reported_user_id) === req.session.user.id) {
+        req.flash('error', 'You cannot report your own listing.');
+        return res.redirect('/products/' + reported_product_id);
+    }
 
     let evidenceImage;
     if (req.file) {
@@ -693,6 +703,10 @@ app.post('/user_report', isLoggedIn, upload.single('evidenceImage'), (req, res) 
 // Show the "report this user" form
 app.get('/report_user/:userId', isLoggedIn, (req, res) => {
     const userId = req.params.userId;
+    if (Number(userId) === req.session.user.id) {
+        req.flash('error', 'You cannot report yourself.');
+        return res.redirect('/');
+    }
     userModel.getUserById(userId, (error, results) => {
         if (error) {
             console.error('Database query error:', error.message);
@@ -708,6 +722,11 @@ app.get('/report_user/:userId', isLoggedIn, (req, res) => {
 // Submit a user report
 app.post('/report_user', isLoggedIn, upload.single('evidenceImage'), (req, res) => {
     const { reported_user_id, category, description } = req.body;
+
+    if (Number(reported_user_id) === req.session.user.id) {
+        req.flash('error', 'You cannot report yourself.');
+        return res.redirect('/');
+    }
 
     let evidenceImage;
     if (req.file) {
@@ -776,6 +795,19 @@ app.post('/my_reports/:id/delete', isLoggedIn, (req, res) => {
     });
 });
 
+// ---------- Notifications ----------
+
+// A user's notifications - currently just report approve/dismiss updates.
+app.get('/notifications', isLoggedIn, (req, res) => {
+    notificationModel.getForUser(req.session.user.id, (error, notifications) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving notifications');
+        }
+        res.render('notifications', { notifications: notifications });
+    });
+});
+
 // ---------- Admin: review reports ----------
 
 // List of reports, filterable by status (defaults to the ones still needing review)
@@ -786,16 +818,26 @@ app.get('/admin/admin_report', isAdmin, (req, res) => {
             console.error('Database query error:', error.message);
             return res.send('Error retrieving reports');
         }
-        userModel.getBannedUsers((banError, bannedUsers) => {
-            if (banError) {
-                console.error('Database query error:', banError.message);
-                return res.send('Error retrieving banned users');
-            }
-            res.render('admin/admin_report', {
-                reports: reports,
-                selectedStatus: status,
-                bannedUsers: bannedUsers
-            });
+        res.render('admin/admin_report', {
+            reports: reports,
+            selectedStatus: status
+        });
+    });
+});
+
+// Active / banned user list, linked from the admin sidebar.
+app.get('/admin/users', isAdmin, (req, res) => {
+    const status = req.query.status === 'banned' ? 'banned' : 'active';
+    const fetchUsers = status === 'banned' ? userModel.getBannedUsers : userModel.getActiveUsers;
+
+    fetchUsers((error, users) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving users');
+        }
+        res.render('admin/users', {
+            users: users,
+            selectedStatus: status
         });
     });
 });
@@ -824,42 +866,63 @@ app.post('/admin/admin_report/:id/approve', isAdmin, (req, res) => {
     const reportId = req.params.id;
     const { reportedProductId, reportedUserId, action, banDuration, adminNote } = req.body;
 
-    // Step 1: remove the reported listing, if that action was chosen
-    const removeProductIfNeeded = (next) => {
-        if ((action === 'remove_product' || action === 'ban_and_remove') && reportedProductId) {
-            productModel.rejectProduct(reportedProductId, 'Removed by admin following a user report', next);
-        } else {
-            next(null);
+    reportModel.getReportById(reportId, (reportError, reportResults) => {
+        if (reportError || reportResults.length === 0) {
+            console.error('Error loading report:', reportError && reportError.message);
+            return res.send('Error approving report');
         }
-    };
+        const report = reportResults[0];
 
-    // Step 2: ban the reported user, if that action was chosen
-    const banUserIfNeeded = (next) => {
-        if ((action === 'ban_user' || action === 'ban_and_remove') && reportedUserId) {
-            userModel.banUser(reportedUserId, banDuration, adminNote || 'Banned following a user report', req.session.user.id, next);
-        } else {
-            next(null);
-        }
-    };
-
-    removeProductIfNeeded((error) => {
-        if (error) {
-            console.error('Error removing product:', error.message);
-            return res.send('Error removing product');
-        }
-        banUserIfNeeded((error2) => {
-            if (error2) {
-                console.error('Error banning user:', error2.message);
-                return res.send('Error banning user');
+        // Step 1: remove the reported listing, if that action was chosen
+        const removeProductIfNeeded = (next) => {
+            if ((action === 'remove_product' || action === 'ban_and_remove') && reportedProductId) {
+                productModel.rejectProduct(reportedProductId, 'Removed by admin following a user report', next);
+            } else {
+                next(null);
             }
-            const summary = adminNote || ('Action taken: ' + action);
-            reportModel.approveReport(reportId, summary, (error3) => {
-                if (error3) {
-                    console.error('Error approving report:', error3.message);
-                    return res.send('Error approving report');
+        };
+
+        // Step 2: ban the reported user, if that action was chosen
+        const banUserIfNeeded = (next) => {
+            if ((action === 'ban_user' || action === 'ban_and_remove') && reportedUserId) {
+                userModel.banUser(reportedUserId, banDuration, adminNote || 'Banned following a user report', req.session.user.id, next);
+            } else {
+                next(null);
+            }
+        };
+
+        removeProductIfNeeded((error) => {
+            if (error) {
+                console.error('Error removing product:', error.message);
+                return res.send('Error removing product');
+            }
+            banUserIfNeeded((error2) => {
+                if (error2) {
+                    console.error('Error banning user:', error2.message);
+                    return res.send('Error banning user');
                 }
-                req.flash('success', 'Report approved and action taken.');
-                res.redirect('/admin/admin_report');
+                const summary = adminNote || ('Action taken: ' + action);
+                reportModel.approveReport(reportId, summary, (error3) => {
+                    if (error3) {
+                        console.error('Error approving report:', error3.message);
+                        return res.send('Error approving report');
+                    }
+
+                    // Let the reporter know what happened to their report.
+                    const subject = report.reportedProductName || report.reportedUserName || 'your report';
+                    notificationModel.create(
+                        report.reporter_id,
+                        `Your report on ${subject} was approved. ${summary}`,
+                        '/my_reports',
+                        (notifyError) => {
+                            if (notifyError) {
+                                console.error('Error creating notification:', notifyError.message);
+                            }
+                            req.flash('success', 'Report approved and action taken.');
+                            res.redirect('/admin/admin_report');
+                        }
+                    );
+                });
             });
         });
     });
@@ -867,13 +930,35 @@ app.post('/admin/admin_report/:id/approve', isAdmin, (req, res) => {
 
 // Admin dismisses a report - no action needed against the product/user
 app.post('/admin/admin_report/:id/dismiss', isAdmin, (req, res) => {
-    reportModel.dismissReport(req.params.id, 'Dismissed - no action needed', (error) => {
-        if (error) {
-            console.error('Error dismissing report:', error.message);
+    const reportId = req.params.id;
+
+    reportModel.getReportById(reportId, (reportError, reportResults) => {
+        if (reportError || reportResults.length === 0) {
+            console.error('Error loading report:', reportError && reportError.message);
             return res.send('Error dismissing report');
         }
-        req.flash('success', 'Report dismissed.');
-        res.redirect('/admin/admin_report');
+        const report = reportResults[0];
+
+        reportModel.dismissReport(reportId, 'Dismissed - no action needed', (error) => {
+            if (error) {
+                console.error('Error dismissing report:', error.message);
+                return res.send('Error dismissing report');
+            }
+
+            const subject = report.reportedProductName || report.reportedUserName || 'your report';
+            notificationModel.create(
+                report.reporter_id,
+                `Your report on ${subject} was dismissed.`,
+                '/my_reports',
+                (notifyError) => {
+                    if (notifyError) {
+                        console.error('Error creating notification:', notifyError.message);
+                    }
+                    req.flash('success', 'Report dismissed.');
+                    res.redirect('/admin/admin_report');
+                }
+            );
+        });
     });
 });
 
@@ -886,7 +971,7 @@ app.post('/admin/users/:id/unban', isAdmin, (req, res) => {
             return res.send('Error removing ban');
         }
         req.flash('success', 'Ban removed.');
-        res.redirect('/admin/admin_report');
+        res.redirect('/admin/users?status=banned');
     });
 });
 
