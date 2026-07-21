@@ -12,7 +12,7 @@ const db = mysql.createConnection({
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'campuscycle_db',
-    ssl: process.env.DB_HOST ? { rejectUnauthorized: true } : false
+    ssl: process.env.DB_HOST ? { rejectUnauthorized: false } : false
 });
 
 db.connect((err) => {
@@ -21,6 +21,136 @@ db.connect((err) => {
         return;
     }
     console.log('Connected to database successfully');
+
+    // Auto-create tables if they don't exist
+    const createTables = [
+        `CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(100) NOT NULL,
+            email VARCHAR(150) NOT NULL UNIQUE,
+            password VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`,
+        `CREATE TABLE IF NOT EXISTS products (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            price DECIMAL(10, 2) NOT NULL,
+            description TEXT,
+            image_symbol VARCHAR(50) DEFAULT '📦',
+            category VARCHAR(100),
+            stock INT DEFAULT 10,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`,
+        `CREATE TABLE IF NOT EXISTS wishlist (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            product_id INT NOT NULL,
+            added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+            UNIQUE KEY unique_user_product_wishlist (user_id, product_id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS cart (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL UNIQUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )`,
+        `CREATE TABLE IF NOT EXISTS cart_items (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            cart_id INT NOT NULL,
+            product_id INT NOT NULL,
+            quantity INT NOT NULL DEFAULT 1,
+            added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (cart_id) REFERENCES cart(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+            UNIQUE KEY unique_cart_product (cart_id, product_id)
+        )`
+    ];
+
+    createTables.reduce((promise, sql) => {
+        return promise.then(() => new Promise((resolve, reject) => {
+            db.query(sql, (err) => {
+                if (err) { console.error('Table creation error:', err.message); return reject(err); }
+                resolve();
+            });
+        }));
+    }, Promise.resolve())
+    .then(() => {
+        console.log('All tables ready.');
+        // Inspect actual users table columns before seeding demo user
+        db.query('DESCRIBE users', (err, columns) => {
+            if (err) { console.error('Could not inspect users table:', err.message); return; }
+
+            const cols = columns.map(c => c.Field);
+            const fields = ['id'];
+            const values = [1];
+
+            if (cols.includes('username'))      { fields.push('username');      values.push('alex_student'); }
+            if (cols.includes('name'))          { fields.push('name');          values.push('Alex Student'); }
+            if (cols.includes('email'))         { fields.push('email');         values.push('alex@campus.edu.sg'); }
+            if (cols.includes('password'))      { fields.push('password');      values.push('password123'); }
+            if (cols.includes('password_hash')) { fields.push('password_hash'); values.push('password123'); }
+
+            const placeholders = values.map(() => '?').join(', ');
+            const updateClause = fields.filter(f => f !== 'id').map(f => `${f} = VALUES(${f})`).join(', ') || 'id = id';
+            const sql = `INSERT INTO users (${fields.join(', ')}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateClause}`;
+
+            db.query(sql, values, (err) => {
+                if (err) console.error('Error seeding demo user:', err.message);
+                else console.log('Demo user ready. Columns:', cols.join(', '));
+            });
+        });
+
+        // Log actual columns of other key tables
+        ['products', 'wishlist', 'wishlists', 'cart_items'].forEach(table => {
+            db.query(`DESCRIBE ${table}`, (err, columns) => {
+                if (!err) console.log(`[schema] ${table}:`, columns.map(c => c.Field).join(', '));
+            });
+        });
+
+        // Ensure products table has image_symbol column (may be missing in pre-existing Azure schema)
+        db.query("SHOW COLUMNS FROM products LIKE 'image_symbol'", (err, result) => {
+            if (!err && result.length === 0) {
+                db.query("ALTER TABLE products ADD COLUMN image_symbol VARCHAR(50) DEFAULT '📦'", (err) => {
+                    if (err) console.error('Could not add image_symbol to products:', err.message);
+                    else console.log('✓ Added image_symbol column to products.');
+                });
+            }
+        });
+
+        // Ensure products table has stock column
+        db.query("SHOW COLUMNS FROM products LIKE 'stock'", (err, result) => {
+            if (!err && result.length === 0) {
+                db.query("ALTER TABLE products ADD COLUMN stock INT DEFAULT 10", (err) => {
+                    if (err) console.error('Could not add stock to products:', err.message);
+                    else console.log('✓ Added stock column to products.');
+                });
+            }
+        });
+
+        // Ensure products table has category column (pre-existing schema uses category_id)
+        db.query("SHOW COLUMNS FROM products LIKE 'category'", (err, result) => {
+            if (!err && result.length === 0) {
+                db.query("ALTER TABLE products ADD COLUMN category VARCHAR(100) DEFAULT 'general'", (err) => {
+                    if (err) console.error('Could not add category to products:', err.message);
+                    else console.log('✓ Added category column to products.');
+                });
+            }
+        });
+
+        // Ensure wishlist table has added_at column
+        db.query("SHOW COLUMNS FROM wishlist LIKE 'added_at'", (err, result) => {
+            if (!err && result.length === 0) {
+                db.query("ALTER TABLE wishlist ADD COLUMN added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP", (err) => {
+                    if (err) console.error('Could not add added_at to wishlist:', err.message);
+                    else console.log('✓ Added added_at column to wishlist.');
+                });
+            }
+        });
+    })
+    .catch(err => console.error('Failed to initialise tables:', err.message));
 });
 
 // Middleware configuration
