@@ -14,8 +14,6 @@
 <div class="profile-layout">
 
     <!-- ============ Left sidebar ============ -->
-    <!-- Only "My account" is a real page. Everything else is a placeholder
-         for the other team members to point at their own pages later. -->
     <aside class="profile-sidebar">
 
         <a href="/profile" class="profile-side-item profile-side-active">
@@ -45,12 +43,9 @@
         </a>
 
         <p class="profile-side-heading">Account</p>
-        <span class="profile-side-item profile-side-disabled">
-            <span class="profile-side-icon">&#128276;</span> Notifications
-        </span>
-        <span class="profile-side-item profile-side-disabled">
-            <span class="profile-side-icon">&#128172;</span> Chats
-        </span>
+        <a href="/users/<%= user.id %>" class="profile-side-item">
+            <span class="profile-side-icon">&#128065;</span> Public profile
+        </a>
         <a href="/logout" class="profile-side-item">
             <span class="profile-side-icon">&#8617;</span> Log out
         </a>
@@ -61,6 +56,18 @@
     <!-- ============ Main column ============ -->
     <main class="profile-main">
 
+        <% if (errors && errors.length > 0) { %>
+            <div class="auth-alert auth-alert-error">
+                <% errors.forEach(function(message) { %><p><%= message %></p><% }); %>
+            </div>
+        <% } %>
+
+        <% if (success && success.length > 0) { %>
+            <div class="auth-alert auth-alert-success">
+                <% success.forEach(function(message) { %><p><%= message %></p><% }); %>
+            </div>
+        <% } %>
+
         <!-- ---- Profile header ---- -->
         <div class="profile-card profile-header">
             <div class="profile-avatar"><%= initials %></div>
@@ -68,7 +75,6 @@
             <div class="profile-identity">
                 <div class="profile-name-row">
                     <h2 class="profile-username">@<%= username %></h2>
-
                     <% if (user.role === 'admin') { %>
                         <span class="profile-badge profile-badge-admin">Administrator</span>
                     <% } else { %>
@@ -77,11 +83,7 @@
                 </div>
 
                 <p class="profile-realname"><%= user.name %></p>
-
-                <!-- Static: the ratings team will fill this in from the ratings table -->
-                <p class="profile-rating">
-                    <span class="profile-star">&#9733;</span> 0.0 (0 reviews)
-                </p>
+                <p class="profile-rating">Member since <%= memberSince %></p>
             </div>
 
             <div class="profile-header-actions">
@@ -89,67 +91,99 @@
             </div>
         </div>
 
-        <!-- ---- Notice banners ---- -->
-        <div class="profile-card profile-notice">
-            <div>
-                <p class="profile-notice-title">Verify your mobile number</p>
-                <p class="profile-notice-text">Verified sellers get more responses from buyers on campus.</p>
-                <span class="profile-notice-link">Verify mobile number</span>
-            </div>
-            <span class="profile-notice-emoji">&#128241;</span>
-        </div>
 
-        <div class="profile-card profile-notice">
-            <div>
-                <p class="profile-notice-title">Meet safely on campus</p>
-                <p class="profile-notice-text">Always arrange meet-ups in public areas around RP.</p>
-                <span class="profile-notice-link">Read safety tips</span>
-            </div>
-            <span class="profile-notice-emoji">&#128737;</span>
-        </div>
-
-        <!-- ---- Account details (real data from the users table) ---- -->
+        <!-- ---- 1. Personal details (UPDATE) ---- -->
         <div class="profile-card">
             <div class="profile-card-head">
-                <h3>Account Details</h3>
-                <span class="profile-readonly-tag">&#128274; Read only</span>
+                <h3>Personal Details</h3>
             </div>
 
-            <!-- Details are managed by the school. Students cannot edit their
-                 own information, the same way they cannot create their own account. -->
-            <p class="profile-readonly-note">
-                Your personal details are managed by the school.
-                To update any of the information below, please contact the school administrator.
+            <form action="/profile/update" method="POST" id="detailsForm">
+
+                <label class="profile-field-label" for="name">Full Name</label>
+                <input type="text" id="name" name="name" class="profile-input"
+                       value="<%= user.name %>" maxlength="100" required>
+
+                <label class="profile-field-label" for="email">School Email</label>
+                <input type="text" id="email" class="profile-input profile-input-locked"
+                       value="<%= user.email %>" disabled>
+                <p class="profile-field-hint">
+                    &#128274; Your school email cannot be changed. It is issued by RP and is how you log in.
+                </p>
+
+                <label class="profile-field-label" for="phone">Contact Number</label>
+                <input type="text" id="phone" name="phone" class="profile-input"
+                       value="<%= user.phone || '' %>" maxlength="20"
+                       placeholder="e.g. 91234567">
+
+                <!-- Confirming with the current password stops someone using an
+                     unattended logged-in browser to change these details. -->
+                <div class="profile-confirm-box">
+                    <label class="profile-field-label" for="detailsPassword">
+                        Confirm with your password to save
+                    </label>
+                    <input type="password" id="detailsPassword" name="currentPassword"
+                           class="profile-input" placeholder="Your current password" required>
+                </div>
+
+                <button type="submit" class="profile-save-btn">Save Changes</button>
+            </form>
+        </div>
+
+
+        <!-- ---- 2. Password (UPDATE) ---- -->
+        <div class="profile-card">
+            <div class="profile-card-head">
+                <h3>Password</h3>
+            </div>
+
+            <div class="profile-detail-row">
+                <span class="profile-detail-label">Current password</span>
+                <span class="profile-detail-value">••••••••</span>
+            </div>
+
+            <!-- A stored password is a one-way bcrypt hash, so it genuinely
+                 cannot be displayed - only replaced. -->
+            <p class="profile-field-hint">
+                Your password is stored encrypted and cannot be shown to anyone, including staff.
+                If you have forgotten it, contact the school administrator.
             </p>
 
-            <div class="profile-detail-row">
-                <span class="profile-detail-label">Full Name</span>
-                <span class="profile-detail-value"><%= user.name %></span>
-            </div>
+            <details class="profile-details-toggle">
+                <summary class="profile-toggle-summary">Change my password</summary>
 
-            <div class="profile-detail-row">
-                <span class="profile-detail-label">School Email</span>
-                <span class="profile-detail-value"><%= user.email %></span>
-            </div>
+                <form action="/profile/password" method="POST" class="profile-toggle-body">
 
-            <div class="profile-detail-row">
-                <span class="profile-detail-label">Contact Number</span>
-                <span class="profile-detail-value">
-                    <% if (user.phone) { %>
-                        <%= user.phone %>
-                    <% } else { %>
-                        <span class="profile-empty">Not added yet</span>
-                    <% } %>
-                </span>
+                    <label class="profile-field-label" for="currentPassword">Current Password</label>
+                    <input type="password" id="currentPassword" name="currentPassword"
+                           class="profile-input" required>
+
+                    <label class="profile-field-label" for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" name="newPassword"
+                           class="profile-input" placeholder="At least 8 characters" required>
+
+                    <label class="profile-field-label" for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword"
+                           class="profile-input" required>
+
+                    <button type="submit" class="profile-save-btn">Update Password</button>
+                </form>
+            </details>
+        </div>
+
+
+        <!-- ---- 3. Account status (read only) ---- -->
+        <div class="profile-card">
+            <div class="profile-card-head">
+                <h3>Account</h3>
             </div>
 
             <div class="profile-detail-row">
                 <span class="profile-detail-label">Account Type</span>
                 <span class="profile-detail-value"><%= user.role === 'admin' ? 'Administrator' : 'Student' %></span>
             </div>
-
             <div class="profile-detail-row">
-                <span class="profile-detail-label">Account Status</span>
+                <span class="profile-detail-label">Status</span>
                 <span class="profile-detail-value">
                     <% if (user.is_banned) { %>
                         <span class="profile-status-banned">Suspended</span>
@@ -158,32 +192,43 @@
                     <% } %>
                 </span>
             </div>
-
             <div class="profile-detail-row">
                 <span class="profile-detail-label">Member Since</span>
                 <span class="profile-detail-value"><%= memberSince %></span>
             </div>
         </div>
 
-        <!-- ---- My listings (static - product team owns this) ---- -->
-        <div class="profile-card">
-            <div class="profile-card-head">
-                <h3>My Listings</h3>
-                <span class="profile-card-count">0 listings &rsaquo;</span>
-            </div>
-            <p class="profile-placeholder">
-                Your listings will appear here once the listings page is connected.
-            </p>
-        </div>
 
-        <!-- ---- Recent activity (static) ---- -->
-        <div class="profile-card">
+        <!-- ---- 4. Close account ---- -->
+        <div class="profile-card profile-danger-card">
             <div class="profile-card-head">
-                <h3>Recent Activity</h3>
+                <h3 class="profile-danger-title">Close My Account</h3>
             </div>
-            <p class="profile-placeholder">
-                Purchases, reservations and reviews will appear here.
+
+            <p class="profile-danger-text">
+                Closing your account signs you out and stops you logging in again.
+                Your past listings, reviews and purchase records stay in the system,
+                because other students' records depend on them.
+                Only the school administrator can reopen a closed account.
             </p>
+
+            <details class="profile-details-toggle">
+                <summary class="profile-toggle-summary profile-toggle-danger">I want to close my account</summary>
+
+                <form action="/profile/close" method="POST" class="profile-toggle-body"
+                      onsubmit="return confirm('Close your account? You will be signed out and will not be able to log in again.');">
+
+                    <label class="profile-field-label" for="closePassword">Confirm with your password</label>
+                    <input type="password" id="closePassword" name="currentPassword"
+                           class="profile-input" required>
+
+                    <label class="profile-field-label" for="confirmText">Type CLOSE to confirm</label>
+                    <input type="text" id="confirmText" name="confirmText"
+                           class="profile-input" placeholder="CLOSE" required>
+
+                    <button type="submit" class="profile-danger-btn">Close My Account</button>
+                </form>
+            </details>
         </div>
 
     </main>

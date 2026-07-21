@@ -1,83 +1,59 @@
 // ============================================================
-// Seed test accounts for the login feature (Hein Thu Nyi Nyi)
+// Seed the team's accounts  (Hein Thu Nyi Nyi)
 //
 // Run it with:   node database/seedUsers.js
 //
-// Passwords are hashed with bcrypt before they are inserted, because a
-// bcrypt hash cannot be typed by hand into an SQL file. Re-running this
-// script is safe - an existing email has its password re-hashed instead
-// of creating a duplicate row.
+// Passwords are hashed with SHA-1 before they are inserted, the same
+// algorithm the login route uses. A hash cannot be typed by hand, so
+// accounts must be created through this script rather than by writing
+// INSERT statements directly.
+//
+// Re-running is safe: an email that already exists has its details and
+// password updated instead of a duplicate row being created.
 // ============================================================
 
-const bcrypt = require('bcrypt');
 const db = require('../config/db');
+const { hashPassword } = require('../utils/hash');
 
-const SALT_ROUNDS = 10;
-
-// Test accounts. Change the passwords here if you want different ones.
+// Everyone on the team, so one run gives the whole group a working login.
 const accounts = [
-    {
-        name: 'Admin Account',
-        email: 'admin@myrp.edu.sg',
-        password: 'Admin@123',
-        phone: '61234567',
-        role: 'admin'
-    },
-    {
-        name: 'Hein Thu Nyi Nyi',
-        email: 'heinthu@myrp.edu.sg',
-        password: 'Student@123',
-        phone: '69876543',
-        role: 'user'
-    },
-    {
-        name: 'Test Student',
-        email: 'teststudent@myrp.edu.sg',
-        password: 'Student@123',
-        phone: '65551234',
-        role: 'user'
-    },
-    {
-        // Second student, so a buyer and a seller can be tested at the same
-        // time using two different logins in two browser windows.
-        name: 'Student Two',
-        email: 'student2@myrp.edu.sg',
-        password: 'Student@123',
-        phone: '65559876',
-        role: 'user'
-    }
+    { name: 'Admin One',        email: 'admin1@myrp.edu.sg',     password: 'Admin@123',   phone: null, role: 'admin' },
+    { name: 'Admin Two',        email: 'admin2@myrp.edu.sg',     password: 'Admin@123',   phone: null, role: 'admin' },
+
+    { name: 'Thiha Aung',       email: 'thiha@myrp.edu.sg',      password: 'Student@123', phone: null, role: 'user' },
+    { name: 'Kaiduo',           email: 'kaiduo@myrp.edu.sg',     password: 'Student@123', phone: null, role: 'user' },
+    { name: 'Ei Htet Htet Tun', email: 'eihtet@myrp.edu.sg',     password: 'Student@123', phone: null, role: 'user' },
+    { name: 'Hein Thu Nyi Nyi', email: 'heinthu@myrp.edu.sg',    password: 'Student@123', phone: null, role: 'user' },
+    { name: 'Denna',            email: 'denna@myrp.edu.sg',      password: 'Student@123', phone: null, role: 'user' },
+    { name: 'Zhen Cheng Chao',  email: 'chengchao@myrp.edu.sg',  password: 'Student@123', phone: null, role: 'user' }
 ];
 
 function seedAccount(account, callback) {
-    bcrypt.hash(account.password, SALT_ROUNDS, (hashError, hash) => {
-        if (hashError) {
-            return callback(hashError);
+    const sql = `
+        INSERT INTO users (name, email, password, phone, role)
+        VALUES (?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            name = VALUES(name),
+            password = VALUES(password),
+            phone = VALUES(phone),
+            role = VALUES(role)
+    `;
+
+    const hash = hashPassword(account.password);
+
+    db.query(sql, [account.name, account.email, hash, account.phone, account.role], (error) => {
+        if (error) {
+            return callback(error);
         }
-
-        const sql = `
-            INSERT INTO users (name, email, password, phone, role)
-            VALUES (?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                name = VALUES(name),
-                password = VALUES(password),
-                phone = VALUES(phone),
-                role = VALUES(role)
-        `;
-
-        db.query(sql, [account.name, account.email, hash, account.phone, account.role], (queryError) => {
-            if (queryError) {
-                return callback(queryError);
-            }
-            console.log('  Seeded ' + account.role.padEnd(5) + '  ' + account.email + '  (password: ' + account.password + ')');
-            callback(null);
-        });
+        console.log('  ' + account.role.padEnd(5) + '  ' + account.email.padEnd(26) + 'password: ' + account.password);
+        callback(null);
     });
 }
 
 // Work through the accounts one at a time, then close the connection.
 function seedNext(index) {
     if (index >= accounts.length) {
-        console.log('\nDone. You can now log in at http://localhost:3000/login');
+        console.log('\nDone. All accounts now use SHA-1 hashed passwords.');
         return db.end();
     }
 
@@ -90,5 +66,5 @@ function seedNext(index) {
     });
 }
 
-console.log('Seeding test accounts...\n');
+console.log('Seeding accounts with SHA-1 hashed passwords...\n');
 seedNext(0);

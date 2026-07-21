@@ -8,7 +8,6 @@
     "seed:ratings": "node scripts/seedRatingTestData.js"
   },
   "dependencies": {
-    "bcrypt": "^6.0.0",
     "connect-flash": "^0.1.1",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",

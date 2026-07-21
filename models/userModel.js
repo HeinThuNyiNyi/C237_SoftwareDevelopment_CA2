@@ -64,7 +64,7 @@ function touchLastActive(id, callback) {
 // page that another student is allowed to look at.
 function findPublicById(id, callback) {
     const sql = `
-        SELECT id, name, role, created_at, last_active, is_banned
+        SELECT id, name, role, created_at, last_active, is_banned, is_active
         FROM users
         WHERE id = ?
     `;
@@ -101,6 +101,48 @@ function countAllUsers(callback) {
     db.query('SELECT COUNT(*) AS total FROM users', callback);
 }
 
+// ============================================================
+// Profile management + approved sign-ups  (Hein Thu Nyi Nyi)
+// ============================================================
+
+// Create a real account. Only called when an admin approves a sign-up
+// from pending_registrations - there is no other route into this table.
+function createUser(user, callback) {
+    const sql = `
+        INSERT INTO users (name, email, password, phone, role)
+        VALUES (?, ?, ?, ?, 'user')
+    `;
+    db.query(sql, [user.name, user.email, user.password, user.phone], callback);
+}
+
+// UPDATE - the student editing their own name and phone number.
+// Email is deliberately not editable: it is the login identifier and is
+// issued by the school.
+function updateProfile(id, name, phone, callback) {
+    const sql = 'UPDATE users SET name = ?, phone = ? WHERE id = ?';
+    db.query(sql, [name, phone, id], callback);
+}
+
+// UPDATE - change the password. The new value is already SHA-1 hashed
+// by the route before it gets here.
+function updatePassword(id, hashedPassword, callback) {
+    const sql = 'UPDATE users SET password = ? WHERE id = ?';
+    db.query(sql, [hashedPassword, id], callback);
+}
+
+// The student closing their own account.
+//
+// The row is kept on purpose. Every foreign key pointing at users is
+// ON DELETE CASCADE, so removing the row would also delete their
+// listings, ratings, reports, reservations and purchase history -
+// including records that belong to the students they traded with.
+// Setting is_active = 0 blocks the login instead, which is the same
+// outcome for them without destroying anyone else's data.
+function deactivateAccount(id, callback) {
+    const sql = 'UPDATE users SET is_active = 0 WHERE id = ?';
+    db.query(sql, [id], callback);
+}
+
 module.exports = {
     getUserById,
     banUser,
@@ -111,5 +153,9 @@ module.exports = {
     touchLastActive,
     findPublicById,
     getPublicStats,
-    countAllUsers
+    countAllUsers,
+    createUser,
+    updateProfile,
+    updatePassword,
+    deactivateAccount
 };

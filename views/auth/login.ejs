@@ -36,6 +36,12 @@
             <h2 class="auth-title">Welcome back</h2>
             <p class="auth-sub">Log in with your Republic Polytechnic account.</p>
 
+            <% if (justClosed) { %>
+                <div class="auth-alert auth-alert-success">
+                    <p>Your account has been closed. Contact the school administrator if you need it reopened.</p>
+                </div>
+            <% } %>
+
             <% if (errors && errors.length > 0) { %>
                 <div class="auth-alert auth-alert-error">
                     <% errors.forEach(function(message) { %>
@@ -81,8 +87,8 @@
             </form>
 
             <p class="auth-note">
-                Accounts are created by the school administrator.<br>
-                Trouble logging in? Contact your admin for help.
+                New student? <a href="/register" class="auth-link">Create an account</a><br>
+                Sign-ups are approved by the school administrator.
             </p>
 
         </div>
