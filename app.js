@@ -10,12 +10,15 @@ const path = require('path');
 const productModel = require('./models/productModel');
 const categoryModel = require('./models/categoryModel');
 const reportModel = require('./models/reportModel');
+const notificationModel = require('./models/notificationModel');
 const userModel = require('./models/userModel');
 const registrationModel = require('./models/registrationModel');
 const reservationModel = require('./models/reservationModel');
 const ratingModel = require('./models/ratingModel');
 const purchaseModel = require('./models/purchaseModel');
-const { ratingUpload, uploadDirectory } = require('./middleware/ratingUpload');
+const wishlistModel = require('./models/wishlistModel');
+const cartModel = require('./models/cartModel');
+const { ratingUpload, uploadDirectory, getUploadedFiles } = require('./middleware/ratingUpload');
 const { isLoggedIn, isAdmin, isGuest, validateLogin } = require('./middleware/auth');
 
 const app = express();
@@ -106,15 +109,34 @@ app.get('/browse', (req, res) => {
                     console.error('Database query error:', ratingError.message);
                     return res.send('Error retrieving ratings');
                 }
-                const products = results.map((product) => ({
-                    ...product,
-                    ratingSummary: summaries.get(Number(product.id)) || { averageRating: 0, reviewCount: 0 }
-                }));
-                res.render('browse', {
-                    products: products,
-                    categories: categories,
-                    selectedCategory: categoryId,
-                    search: search
+
+                const renderBrowse = (wishlistProductIds = []) => {
+                    const wishlistedIds = new Set(wishlistProductIds);
+                    const products = results.map((product) => ({
+                        ...product,
+                        ratingSummary: summaries.get(Number(product.id)) || { averageRating: 0, reviewCount: 0 },
+                        isWishlisted: wishlistedIds.has(Number(product.id))
+                    }));
+
+                    res.render('browse', {
+                        products: products,
+                        categories: categories,
+                        selectedCategory: categoryId,
+                        search: search
+                    });
+                };
+
+                if (!req.session.user) {
+                    return renderBrowse();
+                }
+
+                wishlistModel.getProductIdsByUser(req.session.user.id, (wishlistError, wishlistProductIds) => {
+                    if (wishlistError) {
+                        console.error('Database query error:', wishlistError.message);
+                        return res.send('Error retrieving wishlist status');
+                    }
+
+                    renderBrowse(wishlistProductIds);
                 });
             });
         });
@@ -440,13 +462,6 @@ function toItemView(product) {
     };
 }
 
-function getUploadedFiles(req) {
-    return [
-        ...(req.files?.images || []),
-        ...(req.files?.videos || [])
-    ];
-}
-
 function removeUploadedFiles(files) {
     for (const file of files) {
         fs.unlink(file.path, () => {});
@@ -460,8 +475,8 @@ function removeStoredMedia(mediaPaths) {
     }
 }
 
-// Writing a review requires an account that actually completed a purchase
-// of this product.
+// New reviews require a completed purchase. An existing review remains
+// manageable by its owner if historical purchase rows are later archived.
 function requirePurchasedProduct(req, res, next) {
     const productId = Number(req.params.id);
     const buyerId = req.session.user?.id || null;
@@ -479,14 +494,28 @@ function requirePurchasedProduct(req, res, next) {
         if (error) {
             return next(error);
         }
-        if (!purchase) {
-            req.flash('error', 'Only verified buyers can review this item');
-            return res.redirect(`/details/${productId}/ratings`);
+        if (purchase) {
+            req.ratingBuyerId = buyerId;
+            req.ratingPurchase = purchase;
+            return next();
         }
 
-        req.ratingBuyerId = buyerId;
-        req.ratingPurchase = purchase;
-        next();
+        // Keep an existing review manageable even if old purchase records are
+        // later archived. This fallback never allows creation of a new review.
+        ratingModel.findByProductAndBuyer(productId, buyerId, (ratingError, existingRating) => {
+            if (ratingError) {
+                return next(ratingError);
+            }
+            if (!existingRating) {
+                req.flash('error', 'Only verified buyers can review this item');
+                return res.redirect(`/details/${productId}/ratings`);
+            }
+
+            req.ratingBuyerId = buyerId;
+            req.ratingPurchase = { seller_id: existingRating.seller_id };
+            req.existingRating = existingRating;
+            next();
+        });
     });
 }
 
@@ -548,7 +577,7 @@ app.get('/details/:id/ratings', (req, res, next) => {
                             ratingSummary,
                             reviews,
                             isLoggedIn: true,
-                            canReview: Boolean(purchase),
+                            canReview: Boolean(purchase) || Boolean(existingRating),
                             hasExistingReview: Boolean(existingRating),
                             success: req.flash('success')[0] || null,
                             error: req.flash('error')[0] || null
@@ -577,6 +606,20 @@ app.get('/details/:id/rating/new', requirePurchasedProduct, (req, res, next) => 
             return res.status(404).send('Product not found');
         }
         const product = results[0];
+
+        if (req.existingRating) {
+            return res.render('details/rating', {
+                pageTitle: 'Update your review',
+                item: toItemView(product),
+                itemId: productId,
+                selectedRating: req.existingRating.rating,
+                comment: req.existingRating.comment || '',
+                isAnonymous: req.existingRating.is_anonymous || false,
+                existingMedia: req.existingRating.media || [],
+                success: null,
+                error: req.flash('error')[0] || null
+            });
+        }
 
         ratingModel.findByProductAndBuyer(productId, req.ratingBuyerId, (ratingError, existingRating) => {
             if (ratingError) {
@@ -640,17 +683,43 @@ app.post('/details/:id/rating/new', requirePurchasedProduct, ratingUpload, (req,
     });
 });
 
+// A signed-in buyer may remove only their own review. This does not require a
+// fresh purchase lookup because an existing verified review is sufficient,
+// and it remains deletable even if historical purchase data later changes.
+app.post('/details/:id/rating/delete', (req, res, next) => {
+    const productId = Number(req.params.id);
+    const buyerId = Number(req.session.user?.id);
+
+    if (!Number.isInteger(productId) || productId <= 0) {
+        return res.status(400).send('Invalid product ID');
+    }
+    if (!Number.isInteger(buyerId) || buyerId <= 0) {
+        req.flash('error', 'Sign in to manage your review');
+        return res.redirect(`/details/${productId}/ratings`);
+    }
+
+    ratingModel.deleteByProductAndBuyer(productId, buyerId, (error, result) => {
+        if (error) {
+            return next(error);
+        }
+        if (!result.deleted) {
+            req.flash('error', 'No review was found for this account');
+            return res.redirect(`/details/${productId}/ratings`);
+        }
+
+        removeStoredMedia(result.oldMediaPaths);
+        req.flash('success', 'Your review has been deleted');
+        return res.redirect(`/details/${productId}/ratings`);
+    });
+});
+
 // ==================== Ei Htet Htet Tun's routes ====================
 // Reporting products & users, and the admin review process that resolves those reports.
-
-// TODO: replace these with req.session.user.id once the login feature is done.
-const TEMP_REPORTER_ID = 20; // seeded normal user account making the report (Thiha Aung)
-const TEMP_ADMIN_ID = 18;    // seeded admin account resolving the report (Admin One)
 
 // ---------- Reporting a product ----------
 
 // Show the "report this product" form
-app.get('/user_report/:productId', (req, res) => {
+app.get('/user_report/:productId', isLoggedIn, (req, res) => {
     const productId = req.params.productId;
     productModel.getProductById(productId, (error, results) => {
         if (error) {
@@ -660,13 +729,22 @@ app.get('/user_report/:productId', (req, res) => {
         if (results.length === 0) {
             return res.status(404).send('Product not found');
         }
+        if (results[0].seller_id === req.session.user.id) {
+            req.flash('error', 'You cannot report your own listing.');
+            return res.redirect('/products/' + productId);
+        }
         res.render('user_report', { product: results[0] });
     });
 });
 
 // Submit a product report
-app.post('/user_report', upload.single('evidenceImage'), (req, res) => {
+app.post('/user_report', isLoggedIn, upload.single('evidenceImage'), (req, res) => {
     const { reported_product_id, reported_user_id, category, description } = req.body;
+
+    if (Number(reported_user_id) === req.session.user.id) {
+        req.flash('error', 'You cannot report your own listing.');
+        return res.redirect('/products/' + reported_product_id);
+    }
 
     let evidenceImage;
     if (req.file) {
@@ -676,7 +754,7 @@ app.post('/user_report', upload.single('evidenceImage'), (req, res) => {
     }
 
     reportModel.createReport({
-        reporterId: TEMP_REPORTER_ID,
+        reporterId: req.session.user.id,
         reportedUserId: reported_user_id,
         reportedProductId: reported_product_id,
         category: category,
@@ -695,8 +773,12 @@ app.post('/user_report', upload.single('evidenceImage'), (req, res) => {
 // ---------- Reporting a user ----------
 
 // Show the "report this user" form
-app.get('/report_user/:userId', (req, res) => {
+app.get('/report_user/:userId', isLoggedIn, (req, res) => {
     const userId = req.params.userId;
+    if (Number(userId) === req.session.user.id) {
+        req.flash('error', 'You cannot report yourself.');
+        return res.redirect('/');
+    }
     userModel.getUserById(userId, (error, results) => {
         if (error) {
             console.error('Database query error:', error.message);
@@ -710,8 +792,13 @@ app.get('/report_user/:userId', (req, res) => {
 });
 
 // Submit a user report
-app.post('/report_user', upload.single('evidenceImage'), (req, res) => {
+app.post('/report_user', isLoggedIn, upload.single('evidenceImage'), (req, res) => {
     const { reported_user_id, category, description } = req.body;
+
+    if (Number(reported_user_id) === req.session.user.id) {
+        req.flash('error', 'You cannot report yourself.');
+        return res.redirect('/');
+    }
 
     let evidenceImage;
     if (req.file) {
@@ -721,7 +808,7 @@ app.post('/report_user', upload.single('evidenceImage'), (req, res) => {
     }
 
     reportModel.createReport({
-        reporterId: TEMP_REPORTER_ID,
+        reporterId: req.session.user.id,
         reportedUserId: reported_user_id,
         reportedProductId: null,
         category: category,
@@ -740,8 +827,8 @@ app.post('/report_user', upload.single('evidenceImage'), (req, res) => {
 // ---------- Reporter's own report history ----------
 
 // A user's own submitted reports and their current status
-app.get('/my_reports', (req, res) => {
-    reportModel.getReportsByReporter(TEMP_REPORTER_ID, (error, reports) => {
+app.get('/my_reports', isLoggedIn, (req, res) => {
+    reportModel.getReportsByReporter(req.session.user.id, (error, reports) => {
         if (error) {
             console.error('Database query error:', error.message);
             return res.send('Error retrieving your reports');
@@ -751,11 +838,11 @@ app.get('/my_reports', (req, res) => {
 });
 
 // Show edit form (own pending report only)
-app.get('/my_reports/:id/edit', (req, res) => {
+app.get('/my_reports/:id/edit', isLoggedIn, (req, res) => {
     reportModel.getReportById(req.params.id, (error, results) => {
         if (error || results.length === 0) return res.send('Report not found');
         const report = results[0];
-        if (report.reporter_id !== TEMP_REPORTER_ID || report.status !== 'pending') {
+        if (report.reporter_id !== req.session.user.id || report.status !== 'pending') {
             return res.redirect('/my_reports');
         }
         res.render('edit_report', { report: report });
@@ -763,8 +850,8 @@ app.get('/my_reports/:id/edit', (req, res) => {
 });
 
 // Save edit
-app.post('/my_reports/:id/edit', (req, res) => {
-    reportModel.updateReportByReporter(req.params.id, TEMP_REPORTER_ID, req.body.category, req.body.description, (error) => {
+app.post('/my_reports/:id/edit', isLoggedIn, (req, res) => {
+    reportModel.updateReportByReporter(req.params.id, req.session.user.id, req.body.category, req.body.description, (error) => {
         if (error) return res.send('Error updating report');
         req.flash('success', 'Report updated.');
         res.redirect('/my_reports');
@@ -772,45 +859,68 @@ app.post('/my_reports/:id/edit', (req, res) => {
 });
 
 // Delete own report
-app.post('/my_reports/:id/delete', (req, res) => {
-    reportModel.deleteReportByReporter(req.params.id, TEMP_REPORTER_ID, (error) => {
+app.post('/my_reports/:id/delete', isLoggedIn, (req, res) => {
+    reportModel.deleteReportByReporter(req.params.id, req.session.user.id, (error) => {
         if (error) return res.send('Error deleting report');
         req.flash('success', 'Report deleted.');
         res.redirect('/my_reports');
     });
 });
 
+// ---------- Notifications ----------
+
+// A user's notifications - currently just report approve/dismiss updates.
+app.get('/notifications', isLoggedIn, (req, res) => {
+    notificationModel.getForUser(req.session.user.id, (error, notifications) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving notifications');
+        }
+        res.render('notifications', { notifications: notifications });
+    });
+});
+
 // ---------- Admin: review reports ----------
 
 // List of reports, filterable by status (defaults to the ones still needing review)
-app.get('/admin/admin_report', (req, res) => {
+app.get('/admin/admin_report', isAdmin, (req, res) => {
     const status = req.query.status || 'pending';
     reportModel.getAllReports(status, (error, reports) => {
         if (error) {
             console.error('Database query error:', error.message);
             return res.send('Error retrieving reports');
         }
-        userModel.getBannedUsers((banError, bannedUsers) => {
-            if (banError) {
-                console.error('Database query error:', banError.message);
-                return res.send('Error retrieving banned users');
-            }
-            res.render('admin/admin_report', {
-                reports: reports,
-                selectedStatus: status,
-                bannedUsers: bannedUsers
-            });
+        res.render('admin/admin_report', {
+            reports: reports,
+            selectedStatus: status
+        });
+    });
+});
+
+// Active / banned user list, linked from the admin sidebar.
+app.get('/admin/users', isAdmin, (req, res) => {
+    const status = req.query.status === 'banned' ? 'banned' : 'active';
+    const fetchUsers = status === 'banned' ? userModel.getBannedUsers : userModel.getActiveUsers;
+
+    fetchUsers((error, users) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving users');
+        }
+        res.render('admin/users', {
+            users: users,
+            selectedStatus: status
         });
     });
 });
 
 // Alias for the "Reports" navbar link
-app.get('/admin/reports', (req, res) => {
+app.get('/admin/reports', isAdmin, (req, res) => {
     res.redirect('/admin/admin_report');
 });
 
 // One report in full - reporter, reported user/product, evidence - with the resolution form
-app.get('/admin/admin_report/:id', (req, res) => {
+app.get('/admin/admin_report/:id', isAdmin, (req, res) => {
     reportModel.getReportById(req.params.id, (error, results) => {
         if (error) {
             console.error('Database query error:', error.message);
@@ -824,73 +934,116 @@ app.get('/admin/admin_report/:id', (req, res) => {
 });
 
 // Admin approves a report - take action against the reported product and/or user
-app.post('/admin/admin_report/:id/approve', (req, res) => {
+app.post('/admin/admin_report/:id/approve', isAdmin, (req, res) => {
     const reportId = req.params.id;
     const { reportedProductId, reportedUserId, action, banDuration, adminNote } = req.body;
 
-    // Step 1: remove the reported listing, if that action was chosen
-    const removeProductIfNeeded = (next) => {
-        if ((action === 'remove_product' || action === 'ban_and_remove') && reportedProductId) {
-            productModel.rejectProduct(reportedProductId, 'Removed by admin following a user report', next);
-        } else {
-            next(null);
+    reportModel.getReportById(reportId, (reportError, reportResults) => {
+        if (reportError || reportResults.length === 0) {
+            console.error('Error loading report:', reportError && reportError.message);
+            return res.send('Error approving report');
         }
-    };
+        const report = reportResults[0];
 
-    // Step 2: ban the reported user, if that action was chosen
-    const banUserIfNeeded = (next) => {
-        if ((action === 'ban_user' || action === 'ban_and_remove') && reportedUserId) {
-            userModel.banUser(reportedUserId, banDuration, adminNote || 'Banned following a user report', TEMP_ADMIN_ID, next);
-        } else {
-            next(null);
-        }
-    };
-
-    removeProductIfNeeded((error) => {
-        if (error) {
-            console.error('Error removing product:', error.message);
-            return res.send('Error removing product');
-        }
-        banUserIfNeeded((error2) => {
-            if (error2) {
-                console.error('Error banning user:', error2.message);
-                return res.send('Error banning user');
+        // Step 1: remove the reported listing, if that action was chosen
+        const removeProductIfNeeded = (next) => {
+            if ((action === 'remove_product' || action === 'ban_and_remove') && reportedProductId) {
+                productModel.rejectProduct(reportedProductId, 'Removed by admin following a user report', next);
+            } else {
+                next(null);
             }
-            const summary = adminNote || ('Action taken: ' + action);
-            reportModel.approveReport(reportId, summary, (error3) => {
-                if (error3) {
-                    console.error('Error approving report:', error3.message);
-                    return res.send('Error approving report');
+        };
+
+        // Step 2: ban the reported user, if that action was chosen
+        const banUserIfNeeded = (next) => {
+            if ((action === 'ban_user' || action === 'ban_and_remove') && reportedUserId) {
+                userModel.banUser(reportedUserId, banDuration, adminNote || 'Banned following a user report', req.session.user.id, next);
+            } else {
+                next(null);
+            }
+        };
+
+        removeProductIfNeeded((error) => {
+            if (error) {
+                console.error('Error removing product:', error.message);
+                return res.send('Error removing product');
+            }
+            banUserIfNeeded((error2) => {
+                if (error2) {
+                    console.error('Error banning user:', error2.message);
+                    return res.send('Error banning user');
                 }
-                req.flash('success', 'Report approved and action taken.');
-                res.redirect('/admin/admin_report');
+                const summary = adminNote || ('Action taken: ' + action);
+                reportModel.approveReport(reportId, summary, (error3) => {
+                    if (error3) {
+                        console.error('Error approving report:', error3.message);
+                        return res.send('Error approving report');
+                    }
+
+                    // Let the reporter know what happened to their report.
+                    const subject = report.reportedProductName || report.reportedUserName || 'your report';
+                    notificationModel.create(
+                        report.reporter_id,
+                        `Your report on ${subject} was approved. ${summary}`,
+                        '/my_reports',
+                        (notifyError) => {
+                            if (notifyError) {
+                                console.error('Error creating notification:', notifyError.message);
+                            }
+                            req.flash('success', 'Report approved and action taken.');
+                            res.redirect('/admin/admin_report');
+                        }
+                    );
+                });
             });
         });
     });
 });
 
 // Admin dismisses a report - no action needed against the product/user
-app.post('/admin/admin_report/:id/dismiss', (req, res) => {
-    reportModel.dismissReport(req.params.id, 'Dismissed - no action needed', (error) => {
-        if (error) {
-            console.error('Error dismissing report:', error.message);
+app.post('/admin/admin_report/:id/dismiss', isAdmin, (req, res) => {
+    const reportId = req.params.id;
+
+    reportModel.getReportById(reportId, (reportError, reportResults) => {
+        if (reportError || reportResults.length === 0) {
+            console.error('Error loading report:', reportError && reportError.message);
             return res.send('Error dismissing report');
         }
-        req.flash('success', 'Report dismissed.');
-        res.redirect('/admin/admin_report');
+        const report = reportResults[0];
+
+        reportModel.dismissReport(reportId, 'Dismissed - no action needed', (error) => {
+            if (error) {
+                console.error('Error dismissing report:', error.message);
+                return res.send('Error dismissing report');
+            }
+
+            const subject = report.reportedProductName || report.reportedUserName || 'your report';
+            notificationModel.create(
+                report.reporter_id,
+                `Your report on ${subject} was dismissed.`,
+                '/my_reports',
+                (notifyError) => {
+                    if (notifyError) {
+                        console.error('Error creating notification:', notifyError.message);
+                    }
+                    req.flash('success', 'Report dismissed.');
+                    res.redirect('/admin/admin_report');
+                }
+            );
+        });
     });
 });
 
 // ---------- Admin: lift a ban early ----------
 
-app.post('/admin/users/:id/unban', (req, res) => {
+app.post('/admin/users/:id/unban', isAdmin, (req, res) => {
     userModel.unbanUser(req.params.id, (error) => {
         if (error) {
             console.error('Error removing ban:', error.message);
             return res.send('Error removing ban');
         }
         req.flash('success', 'Ban removed.');
-        res.redirect('/admin/admin_report');
+        res.redirect('/admin/users?status=banned');
     });
 });
 
@@ -1127,18 +1280,26 @@ app.get('/users/:id', isLoggedIn, (req, res) => {
                     return res.send('Error retrieving member listings');
                 }
 
-                res.render('publicProfile', {
-                    profile: profile,
-                    stats: stats,
-                    sellingProducts: sellingProducts,
-                    username: profile.name.trim().toLowerCase().replace(/\s+/g, '.'),
-                    initials: getInitials(profile.name),
-                    firstName: profile.name.trim().split(/\s+/)[0],
-                    lastSeen: describeLastSeen(profile.last_active),
-                    membershipLength: describeMembership(profile.created_at),
-                    positivePercent: positivePercent,
-                    isGoodSeller: stats.reviewCount >= 3 && positivePercent >= 90,
-                    isMe: req.session.user.id === profile.id
+                ratingModel.getPublicReviewsBySellerId(profileId, (reviewsError, receivedReviews) => {
+                    if (reviewsError) {
+                        console.error('Database query error:', reviewsError.message);
+                        return res.send('Error retrieving member reviews');
+                    }
+
+                    res.render('publicProfile', {
+                        profile: profile,
+                        stats: stats,
+                        sellingProducts: sellingProducts,
+                        receivedReviews: receivedReviews,
+                        username: profile.name.trim().toLowerCase().replace(/\s+/g, '.'),
+                        initials: getInitials(profile.name),
+                        firstName: profile.name.trim().split(/\s+/)[0],
+                        lastSeen: describeLastSeen(profile.last_active),
+                        membershipLength: describeMembership(profile.created_at),
+                        positivePercent: positivePercent,
+                        isGoodSeller: stats.reviewCount >= 3 && positivePercent >= 90,
+                        isMe: req.session.user.id === profile.id
+                    });
                 });
             });
         });
@@ -1473,6 +1634,186 @@ app.get('/logout', (req, res) => {
 });
 
 // ==================== Denna's routes ====================
+
+// Display the logged-in user's wishlist.
+app.get('/wishlist', isLoggedIn, (req, res) => {
+    wishlistModel.getWishlistByUser(req.session.user.id, (error, wishlistItems) => {
+        if (error) {
+            console.error('Error retrieving wishlist:', error.message);
+            return res.status(500).send('Error retrieving wishlist');
+        }
+
+        res.render('wishlist', {
+            wishlistItems,
+            success_msg: req.flash('success'),
+            error_msg: req.flash('error')
+        });
+    });
+});
+
+// Add an available product belonging to another user to the wishlist.
+app.post('/wishlist/add/:productId', isLoggedIn, (req, res) => {
+    const redirectTarget = req.body.redirectTo === '/browse' ? '/browse' : '/wishlist';
+
+    wishlistModel.addToWishlist(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error adding to wishlist:', error.message);
+                req.flash('error', 'Unable to add the product.');
+            } else if (result.affectedRows === 0) {
+                req.flash('error', 'The product is unavailable, already saved, or belongs to you.');
+            } else {
+                req.flash('success', 'Product added to your wishlist.');
+            }
+
+            res.redirect(redirectTarget);
+        }
+    );
+});
+
+// Remove a product from only the logged-in user's wishlist.
+app.post('/wishlist/remove/:productId', isLoggedIn, (req, res) => {
+    const redirectTarget = req.body.redirectTo === '/browse' ? '/browse' : '/wishlist';
+
+    wishlistModel.removeFromWishlist(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error removing wishlist item:', error.message);
+                req.flash('error', 'Unable to remove the product.');
+            } else if (result.affectedRows === 0) {
+                req.flash('error', 'Wishlist item not found.');
+            } else {
+                req.flash('success', 'Product removed from your wishlist.');
+            }
+
+            res.redirect(redirectTarget);
+        }
+    );
+});
+
+// Display the logged-in user's cart and calculate its total.
+app.get('/cart', isLoggedIn, (req, res) => {
+    cartModel.getCartByUser(req.session.user.id, (error, cartItems) => {
+        if (error) {
+            console.error('Error retrieving cart:', error.message);
+            return res.status(500).send('Error retrieving cart');
+        }
+
+        const totalAmount = cartItems
+            .reduce((total, item) => total + Number(item.subtotal), 0)
+            .toFixed(2);
+
+        res.render('cart', {
+            cartItems,
+            totalAmount,
+            success_msg: req.flash('success'),
+            error_msg: req.flash('error')
+        });
+    });
+});
+
+// Add a product to the cart or increase its quantity up to available stock.
+app.post('/cart/add/:productId', isLoggedIn, (req, res) => {
+    cartModel.addToCart(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error adding to cart:', error.message);
+                req.flash('error', 'Unable to add the product.');
+            } else if (result.status === 'max_quantity') {
+                const unitLabel = result.availableQuantity === 1 ? 'unit is' : 'units are';
+                req.flash(
+                    'error',
+                    `Only ${result.availableQuantity} ${unitLabel} available, and ${result.availableQuantity === 1 ? 'it is' : 'they are'} already in your cart.`
+                );
+            } else if (result.status === 'own_product') {
+                req.flash('error', 'You cannot add your own product to the cart.');
+            } else if (result.status === 'not_found') {
+                req.flash('error', 'Product not found.');
+            } else if (result.status === 'unavailable') {
+                req.flash('error', 'This product is no longer available.');
+            } else if (result.status === 'added') {
+                req.flash('success', 'Product added to your cart.');
+            }
+
+            res.redirect('/cart');
+        }
+    );
+});
+
+// Increase quantity without exceeding the product's available stock.
+app.post('/cart/increase/:productId', isLoggedIn, (req, res) => {
+    cartModel.increaseQuantity(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error increasing cart quantity:', error.message);
+                req.flash('error', 'Unable to update the quantity.');
+            } else if (result.affectedRows === 0) {
+                req.flash('error', 'Maximum available quantity reached.');
+            }
+
+            res.redirect('/cart');
+        }
+    );
+});
+
+// Decrease quantity, removing the row when its quantity is already one.
+app.post('/cart/decrease/:productId', isLoggedIn, (req, res) => {
+    cartModel.decreaseQuantity(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error decreasing cart quantity:', error.message);
+                req.flash('error', 'Unable to update the quantity.');
+                return res.redirect('/cart');
+            }
+
+            if (result.affectedRows > 0) {
+                return res.redirect('/cart');
+            }
+
+            cartModel.removeFromCart(
+                req.session.user.id,
+                req.params.productId,
+                (removeError) => {
+                    if (removeError) {
+                        console.error('Error removing cart item:', removeError.message);
+                        req.flash('error', 'Unable to remove the product.');
+                    }
+                    res.redirect('/cart');
+                }
+            );
+        }
+    );
+});
+
+// Remove a product from only the logged-in user's cart.
+app.post('/cart/remove/:productId', isLoggedIn, (req, res) => {
+    cartModel.removeFromCart(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error removing cart item:', error.message);
+                req.flash('error', 'Unable to remove the product.');
+            } else if (result.affectedRows === 0) {
+                req.flash('error', 'Cart item not found.');
+            } else {
+                req.flash('success', 'Product removed from your cart.');
+            }
+
+            res.redirect('/cart');
+        }
+    );
+});
 
 
 // ==================== Zhen Cheng Chao's routes ====================

@@ -23,7 +23,19 @@
             <div class="product-image">
                 <img src="/images/<%= product.image %>" alt="<%= product.name %>" style="width:100%; height:100%; object-fit:cover;">
                 <span class="status-badge status-<%= product.status %>"><%= product.status.replace('_', ' ') %></span>
-                <button class="wishlist-btn" title="Add to wishlist">&#9825;</button>
+                <% if (currentUser && Number(currentUser.id) !== Number(product.seller_id)) { %>
+                    <form action="/wishlist/<%= product.isWishlisted ? 'remove' : 'add' %>/<%= product.id %>" method="POST" class="product-wishlist-form">
+                        <input type="hidden" name="redirectTo" value="/browse">
+                        <button
+                            type="submit"
+                            class="wishlist-btn <%= product.isWishlisted ? 'active-wishlist' : '' %>"
+                            title="<%= product.isWishlisted ? 'Remove from wishlist' : 'Add to wishlist' %>"
+                            aria-label="<%= product.isWishlisted ? 'Remove from wishlist' : 'Add to wishlist' %>"
+                        ><%- product.isWishlisted ? '&#9829;' : '&#9825;' %></button>
+                    </form>
+                <% } else if (!currentUser) { %>
+                    <a href="/login" class="wishlist-btn" title="Log in to add to wishlist" aria-label="Log in to add to wishlist">&#9825;</a>
+                <% } %>
             </div>
             <div class="product-body">
                 <p class="product-title"><%= product.name %></p>

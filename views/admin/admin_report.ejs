@@ -58,37 +58,6 @@
                 </div>
             <% }); %>
         </div>
-
-        <!-- Currently banned users -->
-        <div class="admin-section">
-            <h2>Banned Users</h2>
-
-            <% if (bannedUsers.length === 0) { %>
-                <p>No users are currently banned.</p>
-            <% } %>
-
-            <% bannedUsers.forEach(function(user) { %>
-                <div class="user-row">
-                    <div>
-                        <div class="user-name"><%= user.name %></div>
-                        <div class="user-email">
-                            <%= user.email %> &middot;
-                            <% if (user.banned_until) { %>
-                                Banned until <%= new Date(user.banned_until).toLocaleDateString() %>
-                            <% } else { %>
-                                Banned permanently
-                            <% } %>
-                            <% if (user.ban_reason) { %> &middot; Reason: <%= user.ban_reason %> <% } %>
-                        </div>
-                    </div>
-                    <div class="user-actions">
-                        <form action="/admin/users/<%= user.id %>/unban" method="POST">
-                            <button type="submit" class="btn-secondary">Cancel Ban</button>
-                        </form>
-                    </div>
-                </div>
-            <% }); %>
-        </div>
     </div>
 </div>
 

@@ -587,6 +587,28 @@ textarea {
     height: 1.2rem;
 }
 
+.delete-review-form {
+    margin-top: 16px;
+    text-align: center;
+}
+
+.delete-review-button {
+    border: 0;
+    background: transparent;
+    color: #a33a31;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    padding: 10px 14px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.delete-review-button:hover,
+.delete-review-button:focus-visible {
+    color: #76271f;
+}
+
 /* ===== 公开评价列表 ===== */
 .public-reviews-shell {
     padding-top: 1.25rem;

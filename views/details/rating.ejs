@@ -221,6 +221,17 @@
         </svg>
       </button>
     </form>
+
+    <% if (currentRating) { %>
+      <form
+        class="delete-review-form"
+        action="/details/<%= itemId %>/rating/delete"
+        method="POST"
+        onsubmit="return confirm('Delete your review and all of its attachments?');"
+      >
+        <button class="delete-review-button" type="submit">Delete my review</button>
+      </form>
+    <% } %>
   </main>
 
   <script src="/js/rating.js" defer></script>

@@ -35,6 +35,15 @@ function getBannedUsers(callback) {
     db.query(sql, callback);
 }
 
+// Everyone who is not currently banned (total users minus banned users).
+// Admin accounts are excluded - this list is for managing student accounts.
+function getActiveUsers(callback) {
+    const sql = `SELECT id, name, email, role, created_at FROM users
+                 WHERE is_banned = 0 AND role != 'admin'
+                 ORDER BY name ASC`;
+    db.query(sql, callback);
+}
+
 // Find one user by their school email. Used by the login route.
 // Returns an array (mysql2 always does) - the route checks results.length.
 function findByEmail(email, callback) {
@@ -84,14 +93,29 @@ function getPublicStats(id, callback) {
             (SELECT COUNT(*) FROM purchases
               WHERE seller_id = ?)                                   AS itemsSold,
 
-            (SELECT COUNT(*) FROM ratings
-              WHERE seller_id = ?)                                   AS reviewCount,
+            (SELECT COUNT(*) FROM ratings r
+              WHERE r.seller_id = ?
+                AND EXISTS (
+                    SELECT 1 FROM purchases p
+                    WHERE p.buyer_id = r.buyer_id
+                      AND p.product_id = r.product_id
+                ))                                                    AS reviewCount,
 
-            (SELECT ROUND(AVG(rating), 1) FROM ratings
-              WHERE seller_id = ?)                                   AS averageRating,
+            (SELECT ROUND(AVG(r.rating), 1) FROM ratings r
+              WHERE r.seller_id = ?
+                AND EXISTS (
+                    SELECT 1 FROM purchases p
+                    WHERE p.buyer_id = r.buyer_id
+                      AND p.product_id = r.product_id
+                ))                                                    AS averageRating,
 
-            (SELECT COUNT(*) FROM ratings
-              WHERE seller_id = ? AND rating >= 4)                   AS goodRatings
+            (SELECT COUNT(*) FROM ratings r
+              WHERE r.seller_id = ? AND r.rating >= 4
+                AND EXISTS (
+                    SELECT 1 FROM purchases p
+                    WHERE p.buyer_id = r.buyer_id
+                      AND p.product_id = r.product_id
+                ))                                                    AS goodRatings
     `;
     db.query(sql, [id, id, id, id, id], callback);
 }
@@ -148,6 +172,7 @@ module.exports = {
     banUser,
     unbanUser,
     getBannedUsers,
+    getActiveUsers,
     findByEmail,
     findById,
     touchLastActive,

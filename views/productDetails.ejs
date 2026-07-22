@@ -95,8 +95,29 @@
             </a>
 
             <div class="product-actions-full" style="margin-top:18px;">
-                <button class="btn-outline">&#9825; Add to Wishlist</button>
-                <button class="btn-primary">Add to Cart</button>
+                <% if (!currentUser) { %>
+                    <a href="/login" class="btn-outline">&#9825; Log in to Save</a>
+                    <a href="/login" class="btn-primary">Log in to Add to Cart</a>
+                <% } else if (currentUser.id === product.seller_id) { %>
+                    <button class="btn-outline" disabled>Your Product</button>
+                    <button class="btn-primary" disabled>Your Product</button>
+                <% } else { %>
+                    <% if (['selling', 'reserved'].includes(product.status)) { %>
+                        <form action="/wishlist/add/<%= product.id %>" method="POST">
+                            <button type="submit" class="btn-outline">&#9825; Add to Wishlist</button>
+                        </form>
+                    <% } else { %>
+                        <button class="btn-outline" disabled>Cannot Save</button>
+                    <% } %>
+
+                    <% if (product.status === 'selling' && product.quantity > 0) { %>
+                        <form action="/cart/add/<%= product.id %>" method="POST">
+                            <button type="submit" class="btn-primary">Add to Cart</button>
+                        </form>
+                    <% } else { %>
+                        <button class="btn-primary" disabled>Unavailable</button>
+                    <% } %>
+                <% } %>
                 <% if (product.status === 'selling' && product.quantity > 0) { %>
                     <% if (!currentUser) { %>
                         <a href="/login" class="btn-secondary">Log in to Reserve</a>

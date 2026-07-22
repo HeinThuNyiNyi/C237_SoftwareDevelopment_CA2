@@ -5,7 +5,9 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "seed:ratings": "node scripts/seedRatingTestData.js"
+    "seed:ratings": "node scripts/seedRatingTestData.js",
+    "seed:test-buyer": "node scripts/seedUniversalTestBuyer.js",
+    "test": "node --test"
   },
   "dependencies": {
     "connect-flash": "^0.1.1",
