@@ -1725,9 +1725,19 @@ app.post('/cart/add/:productId', isLoggedIn, (req, res) => {
             if (error) {
                 console.error('Error adding to cart:', error.message);
                 req.flash('error', 'Unable to add the product.');
-            } else if (result.affectedRows === 0) {
-                req.flash('error', 'The product is unavailable or belongs to you.');
-            } else {
+            } else if (result.status === 'max_quantity') {
+                const unitLabel = result.availableQuantity === 1 ? 'unit is' : 'units are';
+                req.flash(
+                    'error',
+                    `Only ${result.availableQuantity} ${unitLabel} available, and ${result.availableQuantity === 1 ? 'it is' : 'they are'} already in your cart.`
+                );
+            } else if (result.status === 'own_product') {
+                req.flash('error', 'You cannot add your own product to the cart.');
+            } else if (result.status === 'not_found') {
+                req.flash('error', 'Product not found.');
+            } else if (result.status === 'unavailable') {
+                req.flash('error', 'This product is no longer available.');
+            } else if (result.status === 'added') {
                 req.flash('success', 'Product added to your cart.');
             }
 
