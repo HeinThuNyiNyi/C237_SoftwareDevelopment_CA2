@@ -1997,7 +1997,7 @@ a.sellerbar-btn:hover {
     position: absolute;
     top: 130%;
     right: 0;
-    width: 280px;
+    width: min(280px, calc(100vw - 24px));
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 16px;
@@ -2010,7 +2010,6 @@ a.sellerbar-btn:hover {
     z-index: 200;
 }
 
-.nav-menu:hover .nav-menu-panel,
 .nav-menu.is-open .nav-menu-panel {
     opacity: 1;
     visibility: visible;
@@ -2056,15 +2055,6 @@ a.sellerbar-btn:hover {
     width: 18px;
     text-align: center;
     flex-shrink: 0;
-}
-
-.nav-menu-logout {
-    color: #c62828 !important;
-    font-weight: 600;
-}
-
-.nav-menu-logout:hover {
-    background: #fdecea !important;
 }
 
 /* ============================================================
@@ -2235,7 +2225,7 @@ a.sellerbar-btn:hover {
 }
 
 .nav-avatar:hover,
-.nav-user:hover .nav-avatar {
+.nav-user.is-open .nav-avatar {
     border-color: #c8e6c9;
     box-shadow: 0 4px 12px rgba(27, 107, 52, 0.28);
 }
@@ -2246,7 +2236,7 @@ a.sellerbar-btn:hover {
     position: absolute;
     top: calc(100% + 10px);
     right: 0;
-    min-width: 214px;
+    width: min(240px, calc(100vw - 24px));
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -2255,19 +2245,8 @@ a.sellerbar-btn:hover {
     z-index: 200;
 }
 
-.nav-user:hover .nav-user-menu,
-.nav-user:focus-within .nav-user-menu {
+.nav-user.is-open .nav-user-menu {
     display: block;
-}
-
-/* Invisible bridge so the menu does not close while the mouse moves down */
-.nav-user::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    right: 0;
-    width: 100%;
-    height: 12px;
 }
 
 .nav-user-head {
@@ -2526,7 +2505,39 @@ details[open] .profile-toggle-summary::before { content: "\25BE  "; }
 .reg-actions form { display: flex; flex-direction: column; gap: 6px; }
 
 @media (max-width: 700px) {
-    .nav-user-menu { right: auto; left: 0; }
+    .navbar {
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 10px 12px;
+    }
+
+    .nav-links {
+        width: 100%;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .nav-cta {
+        padding: 8px 12px;
+        font-size: 14px !important;
+    }
+
+    .nav-menu-panel {
+        position: fixed;
+        top: 98px;
+        width: min(280px, calc(100% - 24px));
+        right: auto;
+        left: 12px;
+    }
+
+    .nav-user-menu {
+        position: fixed;
+        top: 98px;
+        width: min(240px, calc(100% - 24px));
+        right: 12px;
+        left: auto;
+    }
+
     .reg-actions { min-width: 0; }
 }
 

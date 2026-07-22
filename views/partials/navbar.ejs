@@ -5,11 +5,11 @@
     </a>
 
     <div class="nav-links">
-        <div class="nav-menu">
-            <button type="button" class="nav-menu-toggle" aria-haspopup="true" aria-expanded="false">
+        <div class="nav-menu" data-nav-dropdown>
+            <button type="button" class="nav-menu-toggle" data-nav-toggle aria-haspopup="true" aria-controls="marketplace-menu" aria-expanded="false">
                 <span class="nav-menu-icon">&#9776;</span> Menu
             </button>
-            <div class="nav-menu-panel">
+            <div id="marketplace-menu" class="nav-menu-panel" data-nav-panel>
                 <div class="nav-menu-group">
                     <p class="nav-menu-heading">Shopping</p>
                     <a href="/wishlist"><span class="nav-menu-item-icon">&#9825;</span> Wishlist</a>
@@ -17,28 +17,49 @@
                 </div>
 
                 <div class="nav-menu-group">
-                    <p class="nav-menu-heading">Selling</p>
-                    <a href="/sales-history"><span class="nav-menu-item-icon">&#127991;</span> Sales History</a>
-                    <a href="/purchase-history"><span class="nav-menu-item-icon">&#128722;</span> Purchase History</a>
-                </div>
-
-                <div class="nav-menu-group">
-                    <p class="nav-menu-heading">Account</p>
-                    <a href="/profile"><span class="nav-menu-item-icon">&#128100;</span> My Profile</a>
+                    <p class="nav-menu-heading">Activity</p>
                     <a href="/reservations"><span class="nav-menu-item-icon">&#128197;</span> My Reservations</a>
-                    <a href="/my_reports"><span class="nav-menu-item-icon">&#9873;</span> My Reports</a>
-                    <a href="/notifications"><span class="nav-menu-item-icon">&#128276;</span> Notifications</a>
+                    <a href="/purchase-history"><span class="nav-menu-item-icon">&#128722;</span> Purchase History</a>
+                    <a href="/sales-history"><span class="nav-menu-item-icon">&#127991;</span> Sales History</a>
                 </div>
 
                 <div class="nav-menu-group nav-menu-group-last">
-                    <a href="/logout" class="nav-menu-logout"><span class="nav-menu-item-icon">&#8617;</span> Logout</a>
+                    <p class="nav-menu-heading">Updates &amp; Support</p>
+                    <a href="/notifications"><span class="nav-menu-item-icon">&#128276;</span> Notifications</a>
+                    <a href="/my_reports"><span class="nav-menu-item-icon">&#9873;</span> My Reports</a>
                 </div>
             </div>
         </div>
 
         <a href="/sell" class="nav-cta">+ Sell an Item</a>
 
-        <%- include('navUser') %>
+        <% if (currentUser) { %>
+            <div class="nav-user" data-nav-dropdown>
+                <button type="button" class="nav-avatar" data-nav-toggle aria-label="Account menu" aria-haspopup="true" aria-controls="account-menu" aria-expanded="false">
+                    <%= currentUser.initials %>
+                </button>
+
+                <div id="account-menu" class="nav-user-menu" data-nav-panel>
+                    <div class="nav-user-head">
+                        <span class="nav-user-name"><%= currentUser.name %></span>
+                        <span class="nav-user-email"><%= currentUser.email %></span>
+                    </div>
+
+                    <a href="/profile">My Profile</a>
+                    <a href="/users/<%= currentUser.id %>">Public Profile</a>
+
+                    <% if (currentUser.role === 'admin') { %>
+                        <a href="/admin">Admin Dashboard</a>
+                    <% } %>
+
+                    <div class="nav-user-divider"></div>
+                    <a href="/logout" class="nav-user-logout">Log Out</a>
+                </div>
+            </div>
+        <% } else { %>
+            <a href="/login" class="nav-login-link">Log In</a>
+            <a href="/register" class="nav-signup-btn">Sign Up</a>
+        <% } %>
     </div>
 </nav>
 
@@ -87,4 +108,54 @@
 </div>
 <p class="search-bar-subtext">Find what you need from fellow students.</p>
 
-<script src="/js/navbar.js" defer></script>
+<script>
+    (() => {
+        const dropdowns = Array.from(document.querySelectorAll('[data-nav-dropdown]'));
+
+        function setOpen(dropdown, isOpen) {
+            const toggle = dropdown.querySelector('[data-nav-toggle]');
+            dropdown.classList.toggle('is-open', isOpen);
+            toggle?.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+
+        function closeOthers(exceptDropdown = null) {
+            dropdowns.forEach((dropdown) => {
+                if (dropdown !== exceptDropdown) setOpen(dropdown, false);
+            });
+        }
+
+        dropdowns.forEach((dropdown) => {
+            const toggle = dropdown.querySelector('[data-nav-toggle]');
+            if (!toggle) return;
+
+            function toggleDropdown(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                const shouldOpen = !dropdown.classList.contains('is-open');
+                closeOthers(dropdown);
+                setOpen(dropdown, shouldOpen);
+            }
+
+            toggle.addEventListener('click', toggleDropdown);
+            toggle.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') toggleDropdown(event);
+            });
+        });
+
+        document.addEventListener('click', (event) => {
+            dropdowns.forEach((dropdown) => {
+                if (!dropdown.contains(event.target)) setOpen(dropdown, false);
+            });
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+
+            const openDropdown = dropdowns.find((dropdown) => dropdown.classList.contains('is-open'));
+            if (!openDropdown) return;
+
+            setOpen(openDropdown, false);
+            openDropdown.querySelector('[data-nav-toggle]')?.focus();
+        });
+    })();
+</script>
