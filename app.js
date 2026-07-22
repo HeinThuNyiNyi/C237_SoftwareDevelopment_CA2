@@ -16,6 +16,8 @@ const registrationModel = require('./models/registrationModel');
 const reservationModel = require('./models/reservationModel');
 const ratingModel = require('./models/ratingModel');
 const purchaseModel = require('./models/purchaseModel');
+const wishlistModel = require('./models/wishlistModel');
+const cartModel = require('./models/cartModel');
 const { ratingUpload, uploadDirectory, getUploadedFiles } = require('./middleware/ratingUpload');
 const { isLoggedIn, isAdmin, isGuest, validateLogin } = require('./middleware/auth');
 
@@ -1613,6 +1615,172 @@ app.get('/logout', (req, res) => {
 });
 
 // ==================== Denna's routes ====================
+
+// Display the logged-in user's wishlist.
+app.get('/wishlist', isLoggedIn, (req, res) => {
+    wishlistModel.getWishlistByUser(req.session.user.id, (error, wishlistItems) => {
+        if (error) {
+            console.error('Error retrieving wishlist:', error.message);
+            return res.status(500).send('Error retrieving wishlist');
+        }
+
+        res.render('wishlist', {
+            wishlistItems,
+            success_msg: req.flash('success'),
+            error_msg: req.flash('error')
+        });
+    });
+});
+
+// Add an available product belonging to another user to the wishlist.
+app.post('/wishlist/add/:productId', isLoggedIn, (req, res) => {
+    wishlistModel.addToWishlist(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error adding to wishlist:', error.message);
+                req.flash('error', 'Unable to add the product.');
+            } else if (result.affectedRows === 0) {
+                req.flash('error', 'The product is unavailable, already saved, or belongs to you.');
+            } else {
+                req.flash('success', 'Product added to your wishlist.');
+            }
+
+            res.redirect('/wishlist');
+        }
+    );
+});
+
+// Remove a product from only the logged-in user's wishlist.
+app.post('/wishlist/remove/:productId', isLoggedIn, (req, res) => {
+    wishlistModel.removeFromWishlist(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error removing wishlist item:', error.message);
+                req.flash('error', 'Unable to remove the product.');
+            } else if (result.affectedRows === 0) {
+                req.flash('error', 'Wishlist item not found.');
+            } else {
+                req.flash('success', 'Product removed from your wishlist.');
+            }
+
+            res.redirect('/wishlist');
+        }
+    );
+});
+
+// Display the logged-in user's cart and calculate its total.
+app.get('/cart', isLoggedIn, (req, res) => {
+    cartModel.getCartByUser(req.session.user.id, (error, cartItems) => {
+        if (error) {
+            console.error('Error retrieving cart:', error.message);
+            return res.status(500).send('Error retrieving cart');
+        }
+
+        const totalAmount = cartItems
+            .reduce((total, item) => total + Number(item.subtotal), 0)
+            .toFixed(2);
+
+        res.render('cart', {
+            cartItems,
+            totalAmount,
+            success_msg: req.flash('success'),
+            error_msg: req.flash('error')
+        });
+    });
+});
+
+// Add a product to the cart or increase its quantity up to available stock.
+app.post('/cart/add/:productId', isLoggedIn, (req, res) => {
+    cartModel.addToCart(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error adding to cart:', error.message);
+                req.flash('error', 'Unable to add the product.');
+            } else if (result.affectedRows === 0) {
+                req.flash('error', 'The product is unavailable or belongs to you.');
+            } else {
+                req.flash('success', 'Product added to your cart.');
+            }
+
+            res.redirect('/cart');
+        }
+    );
+});
+
+// Increase quantity without exceeding the product's available stock.
+app.post('/cart/increase/:productId', isLoggedIn, (req, res) => {
+    cartModel.increaseQuantity(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error increasing cart quantity:', error.message);
+                req.flash('error', 'Unable to update the quantity.');
+            } else if (result.affectedRows === 0) {
+                req.flash('error', 'Maximum available quantity reached.');
+            }
+
+            res.redirect('/cart');
+        }
+    );
+});
+
+// Decrease quantity, removing the row when its quantity is already one.
+app.post('/cart/decrease/:productId', isLoggedIn, (req, res) => {
+    cartModel.decreaseQuantity(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error decreasing cart quantity:', error.message);
+                req.flash('error', 'Unable to update the quantity.');
+                return res.redirect('/cart');
+            }
+
+            if (result.affectedRows > 0) {
+                return res.redirect('/cart');
+            }
+
+            cartModel.removeFromCart(
+                req.session.user.id,
+                req.params.productId,
+                (removeError) => {
+                    if (removeError) {
+                        console.error('Error removing cart item:', removeError.message);
+                        req.flash('error', 'Unable to remove the product.');
+                    }
+                    res.redirect('/cart');
+                }
+            );
+        }
+    );
+});
+
+// Remove a product from only the logged-in user's cart.
+app.post('/cart/remove/:productId', isLoggedIn, (req, res) => {
+    cartModel.removeFromCart(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error removing cart item:', error.message);
+                req.flash('error', 'Unable to remove the product.');
+            } else if (result.affectedRows === 0) {
+                req.flash('error', 'Cart item not found.');
+            } else {
+                req.flash('success', 'Product removed from your cart.');
+            }
+
+            res.redirect('/cart');
+        }
+    );
+});
 
 
 // ==================== Zhen Cheng Chao's routes ====================
