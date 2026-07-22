@@ -64,7 +64,7 @@ function touchLastActive(id, callback) {
 // page that another student is allowed to look at.
 function findPublicById(id, callback) {
     const sql = `
-        SELECT id, name, role, created_at, last_active, is_banned, is_active
+        SELECT id, name, role, created_at, last_active, is_banned, is_active, is_approved
         FROM users
         WHERE id = ?
     `;
@@ -105,14 +105,47 @@ function countAllUsers(callback) {
 // Profile management + approved sign-ups  (Hein Thu Nyi Nyi)
 // ============================================================
 
-// Create a real account. Only called when an admin approves a sign-up
-// from pending_registrations - there is no other route into this table.
+// CREATE - a student registering themselves.
+//
+// The row goes straight into users, the same way the registration example
+// in the module inserts into its own users table. The account starts with
+// is_approved = 0, so the login route refuses it until an admin approves.
+// The password arriving here is already SHA-1 hashed by the route.
 function createUser(user, callback) {
     const sql = `
-        INSERT INTO users (name, email, password, phone, role)
-        VALUES (?, ?, ?, ?, 'user')
+        INSERT INTO users (name, email, password, phone, role, is_approved)
+        VALUES (?, ?, ?, ?, 'user', 0)
     `;
     db.query(sql, [user.name, user.email, user.password, user.phone], callback);
+}
+
+// READ - every account waiting for an admin decision.
+function getPendingApprovals(callback) {
+    const sql = `
+        SELECT id, name, email, phone, created_at
+        FROM users
+        WHERE is_approved = 0
+        ORDER BY created_at DESC
+    `;
+    db.query(sql, callback);
+}
+
+// UPDATE - the admin letting a new student in.
+function approveUser(id, callback) {
+    const sql = 'UPDATE users SET is_approved = 1 WHERE id = ?';
+    db.query(sql, [id], callback);
+}
+
+// DELETE - the admin refusing a registration.
+//
+// A hard DELETE is safe here only because is_approved = 0 is part of the
+// WHERE clause. An unapproved account has never been able to log in, so it
+// cannot own any products, purchases, ratings or reports for the foreign
+// key cascade to reach. An approved account is closed with is_active = 0
+// instead - see deactivateAccount below.
+function rejectUser(id, callback) {
+    const sql = 'DELETE FROM users WHERE id = ? AND is_approved = 0';
+    db.query(sql, [id], callback);
 }
 
 // UPDATE - the student editing their own name and phone number.
@@ -155,6 +188,9 @@ module.exports = {
     getPublicStats,
     countAllUsers,
     createUser,
+    getPendingApprovals,
+    approveUser,
+    rejectUser,
     updateProfile,
     updatePassword,
     deactivateAccount

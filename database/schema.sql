@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     phone VARCHAR(20),
     role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
+    -- 0 while a self-registered student is still waiting for an admin.
+    -- DEFAULT 1 so accounts created directly by the school are usable at once.
+    is_approved TINYINT(1) NOT NULL DEFAULT 1,
     is_active TINYINT(1) NOT NULL DEFAULT 1,  -- 0 when the student closes their own account
     is_banned BOOLEAN NOT NULL DEFAULT FALSE,
     banned_until DATETIME NULL,
@@ -22,25 +25,6 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_active DATETIME NULL,  -- updated by the login route on every sign in
     CONSTRAINT fk_users_banned_by FOREIGN KEY (banned_by) REFERENCES users(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ------------------------------------------------------------
--- pending_registrations: student sign-ups awaiting admin approval.
--- A sign-up is not an account - it only becomes a row in users once an
--- admin approves it, so an unapproved person cannot log in at all.
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS pending_registrations (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    phone VARCHAR(20) NULL,
-    status ENUM('pending', 'rejected') NOT NULL DEFAULT 'pending',
-    rejection_reason VARCHAR(255) NULL,
-    reviewed_by INT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    reviewed_at DATETIME NULL,
-    CONSTRAINT fk_pending_reviewer FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------

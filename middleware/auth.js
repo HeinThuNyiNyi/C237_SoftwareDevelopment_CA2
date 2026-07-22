@@ -70,10 +70,67 @@ function validateLogin(req, res, next) {
     next();
 }
 
+// Server-side check of the registration form, following the same
+// validateRegistration middleware pattern taught in the module: check the
+// required fields, check the password length, flash an error together with
+// the submitted values and redirect back to the form; otherwise call next()
+// so the request carries on to the route handler.
+//
+// The RP domain rule is the one extra check this application needs, and it
+// belongs here rather than in the HTML, because a check in the browser can
+// be bypassed by sending the request directly.
+function validateRegistration(req, res, next) {
+    const name = (req.body.name || '').trim();
+    const username = (req.body.username || '').trim().toLowerCase();
+    const phone = (req.body.phone || '').trim();
+    const password = req.body.password || '';
+    const confirmPassword = req.body.confirmPassword || '';
+
+    // Sends the user back to the form with the message, keeping what they
+    // already typed so they do not have to fill it in again.
+    const reject = (message) => {
+        req.flash('error', message);
+        req.flash('formData', { name: name, username: username, phone: phone });
+        return res.redirect('/register');
+    };
+
+    if (!name || !username || !password) {
+        return reject('All fields are required.');
+    }
+
+    if (password.length < 6) {
+        return reject('Password should be at least 6 or more characters long.');
+    }
+
+    if (password !== confirmPassword) {
+        return reject('The two passwords do not match.');
+    }
+
+    // Only the characters an RP school email actually uses.
+    if (!/^[a-z0-9._-]+$/.test(username)) {
+        return reject('Your school email can only contain letters, numbers, dots, dashes and underscores.');
+    }
+
+    if (phone && !/^[0-9+\s-]{6,20}$/.test(phone)) {
+        return reject('Please enter a valid contact number.');
+    }
+
+    // Build the full school email on the SERVER, so a non-RP address cannot
+    // be submitted even if someone edits the page.
+    req.body.name = name;
+    req.body.email = username + RP_DOMAIN;
+    req.body.phone = phone;
+
+    // All validations passed, so next() lets the request proceed to the
+    // route handler that inserts the new user.
+    next();
+}
+
 module.exports = {
     isLoggedIn,
     isAdmin,
     isGuest,
     validateLogin,
+    validateRegistration,
     RP_DOMAIN
 };

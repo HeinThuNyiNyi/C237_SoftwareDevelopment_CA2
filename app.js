@@ -9,7 +9,6 @@ const productModel = require('./models/productModel');
 const categoryModel = require('./models/categoryModel');
 const reportModel = require('./models/reportModel');
 const userModel = require('./models/userModel');
-const registrationModel = require('./models/registrationModel');
 const reservationModel = require('./models/reservationModel');
 const ratingModel = require('./models/ratingModel');
 const purchaseModel = require('./models/purchaseModel');
@@ -18,7 +17,7 @@ const cartModel = require('./models/cartModel');
 const { ratingUpload } = require('./middleware/ratingUpload');
 const { productUpload } = require('./middleware/productUpload');
 const { reportUpload } = require('./middleware/reportUpload');
-const { isLoggedIn, isAdmin, isGuest, validateLogin } = require('./middleware/auth');
+const { isLoggedIn, isAdmin, isGuest, validateLogin, validateRegistration } = require('./middleware/auth');
 
 const app = express();
 
@@ -1015,6 +1014,14 @@ app.post('/login', validateLogin, (req, res) => {
                 return res.redirect('/login');
             }
 
+            // A registration still waiting for the admin is stopped here.
+            // Checked after the password so the message is not shown to
+            // someone guessing email addresses.
+            if (user.is_approved === 0) {
+                req.flash('error', 'Your account is still waiting for the school administrator to approve it. Please try again later.');
+                return res.redirect('/login');
+            }
+
             // A closed account is stopped here. Checked after the password so
             // the message is not shown to someone guessing email addresses.
             if (user.is_active === 0) {
@@ -1183,184 +1190,106 @@ app.get('/users/:id', isLoggedIn, (req, res) => {
 
 const RP_DOMAIN = '@myrp.edu.sg';
 
-// Show the sign-up form.
+// Show the registration form.
 app.get('/register', isGuest, (req, res) => {
     res.render('auth/register', {
         errors: req.flash('error'),
         success: req.flash('success'),
-        old: req.flash('old')[0] || {}
+        // formData carries back what was typed when validation failed.
+        old: req.flash('formData')[0] || {}
     });
 });
 
-// CREATE - submit a sign-up for admin approval.
-app.post('/register', isGuest, (req, res) => {
-    const name = (req.body.name || '').trim();
-    const username = (req.body.username || '').trim().toLowerCase();
-    const phone = (req.body.phone || '').trim();
-    const password = req.body.password || '';
-    const confirmPassword = req.body.confirmPassword || '';
+// CREATE - register a new student.
+//
+// validateRegistration runs first. It checks the required fields and the
+// password length the same way the module's registration example does, and
+// it builds the full @myrp.edu.sg email on the server. Only if every check
+// passes does it call next() and reach this handler.
+app.post('/register', isGuest, validateRegistration, (req, res) => {
+    const { name, email, phone, password } = req.body;
 
-    // The form only asks for the part before the @, and the domain is fixed
-    // here on the server. That way a non-RP address cannot be submitted even
-    // if someone edits the page.
-    const email = username + RP_DOMAIN;
-
-    // Keep what they typed so a failed attempt does not clear the form.
-    const keep = () => req.flash('old', { name: name, username: username, phone: phone });
-
-    if (!name || !username || !password) {
-        req.flash('error', 'Please fill in your name, school email and password.');
-        keep();
-        return res.redirect('/register');
-    }
-
-    // Only the characters an RP email actually uses.
-    if (!/^[a-z0-9._-]+$/.test(username)) {
-        req.flash('error', 'Your school email can only contain letters, numbers, dots, dashes and underscores.');
-        keep();
-        return res.redirect('/register');
-    }
-
-    if (password.length < 8) {
-        req.flash('error', 'Your password must be at least 8 characters long.');
-        keep();
-        return res.redirect('/register');
-    }
-
-    if (password !== confirmPassword) {
-        req.flash('error', 'The two passwords do not match.');
-        keep();
-        return res.redirect('/register');
-    }
-
-    // Already a real account?
-    userModel.findByEmail(email, (userError, existingUsers) => {
-        if (userError) {
-            console.error('Database query error:', userError.message);
+    // One account per school email.
+    userModel.findByEmail(email, (findError, existing) => {
+        if (findError) {
+            console.error('Database query error:', findError.message);
             return res.send('Error checking your details');
         }
 
-        if (existingUsers.length > 0) {
+        if (existing.length > 0) {
             req.flash('error', 'An account already exists for that school email. Try logging in instead.');
-            keep();
             return res.redirect('/register');
         }
 
-        // Already waiting for approval?
-        registrationModel.findByEmail(email, (regError, existingRegistrations) => {
-            if (regError) {
-                console.error('Database query error:', regError.message);
-                return res.send('Error checking your details');
-            }
+        // Hash before storing, so the database never holds a readable password.
+        const hashed = hashPassword(password);
 
-            if (existingRegistrations.length > 0) {
-                const existing = existingRegistrations[0];
-                if (existing.status === 'pending') {
-                    req.flash('error', 'A sign-up for that email is already waiting for approval.');
-                } else {
-                    req.flash('error', 'A previous sign-up for that email was rejected. Please contact the school administrator.');
-                }
-                keep();
-                return res.redirect('/register');
+        // Goes straight into the users table, starting unapproved.
+        userModel.createUser({
+            name: name,
+            email: email,
+            password: hashed,
+            phone: phone || null
+        }, (error) => {
+            if (error) {
+                console.error('Error creating user:', error.message);
+                return res.send('Error creating your account');
             }
-
-            // Hash before storing, so even a waiting sign-up never holds a
-            // readable password.
-            registrationModel.createRegistration({
-                name: name,
-                email: email,
-                password: hashPassword(password),
-                phone: phone || null
-            }, (error) => {
-                if (error) {
-                    console.error('Error creating registration:', error.message);
-                    return res.send('Error creating your sign-up');
-                }
-                req.flash('success', 'Thank you. Your sign-up has been sent to the school administrator for approval. You will be able to log in once it is approved.');
-                res.redirect('/login');
-            });
+            req.flash('success', 'Thank you. Your account has been created and is waiting for the school administrator to approve it. You will be able to log in once it is approved.');
+            res.redirect('/login');
         });
     });
 });
 
 
-// ---- Admin review of sign-ups ----
+// ---- Admin approval of new registrations ----
 
-// READ - list every sign-up.
+// READ - accounts waiting for a decision.
 app.get('/admin/registrations', isLoggedIn, isAdmin, (req, res) => {
-    registrationModel.getAllRegistrations((error, registrations) => {
+    userModel.getPendingApprovals((error, pending) => {
         if (error) {
             console.error('Database query error:', error.message);
-            return res.send('Error retrieving sign-ups');
+            return res.send('Error retrieving registrations');
         }
 
         res.render('admin/registrations', {
-            registrations: registrations,
-            pendingCount: registrations.filter(r => r.status === 'pending').length,
+            registrations: pending,
+            pendingCount: pending.length,
             errors: req.flash('error'),
             success: req.flash('success')
         });
     });
 });
 
-// Approve - copy the sign-up into users, then remove the request.
+// UPDATE - approve the account so the student can log in.
 app.post('/admin/registrations/:id/approve', isLoggedIn, isAdmin, (req, res) => {
-    registrationModel.getRegistrationById(req.params.id, (findError, results) => {
-        if (findError || results.length === 0) {
-            req.flash('error', 'That sign-up could not be found.');
-            return res.redirect('/admin/registrations');
-        }
-
-        const registration = results[0];
-
-        // The password is already hashed, so it is carried across as-is and
-        // never re-hashed - hashing it twice would stop the student logging in.
-        userModel.createUser({
-            name: registration.name,
-            email: registration.email,
-            password: registration.password,
-            phone: registration.phone
-        }, (createError) => {
-            if (createError) {
-                console.error('Error creating user:', createError.message);
-                req.flash('error', 'Could not create that account. The email may already be in use.');
-                return res.redirect('/admin/registrations');
-            }
-
-            // Only delete the request once the account definitely exists.
-            registrationModel.deleteRegistration(req.params.id, (deleteError) => {
-                if (deleteError) {
-                    console.error('Error clearing registration:', deleteError.message);
-                }
-                req.flash('success', registration.name + ' can now log in.');
-                res.redirect('/admin/registrations');
-            });
-        });
-    });
-});
-
-// UPDATE - reject a sign-up, keeping the reason.
-app.post('/admin/registrations/:id/reject', isLoggedIn, isAdmin, (req, res) => {
-    const reason = (req.body.reason || '').trim() || 'No reason given';
-
-    registrationModel.rejectRegistration(req.params.id, reason, req.session.user.id, (error) => {
+    userModel.approveUser(req.params.id, (error) => {
         if (error) {
-            console.error('Error rejecting registration:', error.message);
-            return res.send('Error rejecting the sign-up');
+            console.error('Error approving user:', error.message);
+            return res.send('Error approving the account');
         }
-        req.flash('success', 'Sign-up rejected.');
+        req.flash('success', 'Account approved. That student can now log in.');
         res.redirect('/admin/registrations');
     });
 });
 
-// DELETE - clear a rejected sign-up off the list.
-app.post('/admin/registrations/:id/delete', isLoggedIn, isAdmin, (req, res) => {
-    registrationModel.deleteRegistration(req.params.id, (error) => {
+// DELETE - refuse the registration and remove the row.
+//
+// Safe as a hard delete because the model only deletes rows that are still
+// unapproved, and an unapproved account has never been able to log in, so it
+// owns no products, purchases or ratings for the cascade to reach.
+app.post('/admin/registrations/:id/reject', isLoggedIn, isAdmin, (req, res) => {
+    userModel.rejectUser(req.params.id, (error, result) => {
         if (error) {
-            console.error('Error deleting registration:', error.message);
-            return res.send('Error deleting the sign-up');
+            console.error('Error rejecting user:', error.message);
+            return res.send('Error rejecting the registration');
         }
-        req.flash('success', 'Sign-up record deleted.');
+
+        if (result.affectedRows === 0) {
+            req.flash('error', 'That registration has already been approved and cannot be rejected here.');
+        } else {
+            req.flash('success', 'Registration rejected and removed.');
+        }
         res.redirect('/admin/registrations');
     });
 });
