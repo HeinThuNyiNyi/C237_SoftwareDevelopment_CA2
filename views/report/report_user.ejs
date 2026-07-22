@@ -3,42 +3,39 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Report Listing - CampusCycle</title>
+<title>Report User - CampusCycle</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
-<%- include('partials/navbar') %>
+<%- include('../partials/navbar') %>
 
 <section class="hero">
-    <h1>Report a Listing</h1>
-    <p>Tell us what is wrong with this listing and our admins will look into it.</p>
+    <h1>Report a User</h1>
+    <p>Tell us what happened and our admins will look into this account.</p>
 </section>
 
 <div class="admin-section">
     <div class="review-card">
-        <div class="review-thumb" style="width:90px; height:90px;">
-            <img src="/images/<%= product.image %>" alt="<%= product.name %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
-        </div>
+        <div class="review-thumb">&#128100;</div>
         <div class="review-body">
-            <h4>You are reporting: <%= product.name %></h4>
-            <p class="review-meta">Sold by: <%= product.sellerName %></p>
+            <h4>You are reporting: <%= reportedUser.name %></h4>
+            <p class="review-meta"><%= reportedUser.email %></p>
         </div>
     </div>
 
     <div class="review-card form-card">
-        <form action="/user_report" method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="reported_product_id" value="<%= product.id %>">
-            <input type="hidden" name="reported_user_id" value="<%= product.seller_id %>">
+        <form action="/report_user" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="reported_user_id" value="<%= reportedUser.id %>">
 
             <div style="margin-bottom:14px;">
                 <label for="category">Reason</label><br>
                 <select name="category" id="category" class="ban-select" required>
                     <option value="">-- Select --</option>
-                    <option value="prohibited_item">Prohibited item</option>
                     <option value="scam">Scam / fraud</option>
-                    <option value="misleading">Misleading listing</option>
-                    <option value="offensive">Offensive content</option>
+                    <option value="harassment">Harassment / abusive behaviour</option>
+                    <option value="no_show">Did not show up for appointment</option>
+                    <option value="fake_account">Suspicious / fake account</option>
                     <option value="other">Other</option>
                 </select>
             </div>
@@ -54,7 +51,7 @@
             </div>
 
             <button type="submit" class="btn-primary">Submit Report</button>
-            <a href="/products/<%= product.id %>" class="btn-outline">Cancel</a>
+            <a href="/" class="btn-outline">Cancel</a>
         </form>
     </div>
 </div>

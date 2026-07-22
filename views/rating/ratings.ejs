@@ -1,0 +1,80 @@
+<%
+  const averageRating = Number(ratingSummary.averageRating || 0);
+  const reviewCount = Number(ratingSummary.reviewCount || 0);
+  const roundedAverage = Math.round(averageRating);
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reviews for <%= item.name %> - CampusCycle</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<%- include('../partials/navbar') %>
+
+<section class="hero">
+    <h1>Reviews for <%= item.name %></h1>
+    <div class="stars-display" style="justify-content:center; margin-top:8px;">
+        <% for (let star = 1; star <= 5; star++) { %>
+            <span class="<%= star <= roundedAverage ? 'is-filled' : '' %>">&#9733;</span>
+        <% } %>
+    </div>
+    <p><%= averageRating.toFixed(1) %> out of 5 &middot; <%= reviewCount %> review<%= reviewCount === 1 ? '' : 's' %></p>
+</section>
+
+<div class="admin-section">
+
+    <% if (success) { %>
+        <p style="color:#176b3a;"><%= success %></p>
+    <% } %>
+    <% if (error) { %>
+        <p style="color:#b83b3b;"><%= error %></p>
+    <% } %>
+
+    <% if (canReview) { %>
+        <a href="/details/<%= itemId %>/rating/new" class="btn-primary" style="display:inline-block; margin-bottom:20px;">
+            <%= hasExistingReview ? 'Edit My Review' : 'Write a Review' %>
+        </a>
+    <% } else if (!isLoggedIn) { %>
+        <p>Sign in with the account used for the purchase to write a review.</p>
+    <% } else { %>
+        <p>Only buyers who purchased this item can write a review.</p>
+    <% } %>
+
+    <% if (reviews.length === 0) { %>
+        <p>No reviews yet.</p>
+    <% } %>
+
+    <% reviews.forEach(function(review) { %>
+        <div class="review-card">
+            <div class="review-thumb">
+                <% if (review.image) { %>
+                    <img src="<%= review.image %>" alt="Photo from <%= review.authorLabel %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
+                <% } else { %>
+                    &#9733;
+                <% } %>
+            </div>
+            <div class="review-body">
+                <h4><%= review.authorLabel %></h4>
+                <div class="stars-display">
+                    <% for (let star = 1; star <= 5; star++) { %>
+                        <span class="<%= star <= review.rating ? 'is-filled' : '' %>">&#9733;</span>
+                    <% } %>
+                </div>
+                <p class="review-meta"><%= new Date(review.updatedAt).toLocaleDateString() %></p>
+                <p><%= review.comment || 'This buyer left a star rating without a written comment.' %></p>
+            </div>
+        </div>
+    <% }); %>
+
+</div>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+
+</body>
+</html>

@@ -42,27 +42,4 @@
     </div>
 </nav>
 
-<div class="search-bar">
-    <a href="/" class="search-bar-home" title="Home">&#8962; Home</a>
-
-    <form action="/browse" method="GET" class="search-bar-form">
-        <div class="search-bar-input-group">
-            <span class="search-bar-icon">&#128269;</span>
-            <input type="text" name="q" placeholder="Search listings..." class="search-bar-input" autocomplete="off">
-        </div>
-
-        <% if (typeof categories !== 'undefined') { %>
-            <select name="category" class="search-bar-select">
-                <option value="">All Categories</option>
-                <% categories.forEach(function(category) { %>
-                    <option value="<%= category.id %>" <% if (typeof selectedCategory !== 'undefined' && String(selectedCategory) === String(category.id)) { %>selected<% } %>><%= category.name %></option>
-                <% }); %>
-            </select>
-        <% } %>
-
-        <button type="submit" class="btn-primary search-bar-submit">Search</button>
-    </form>
-</div>
-<p class="search-bar-subtext">Find what you need from fellow students.</p>
-
 <script src="/js/navbar.js" defer></script>

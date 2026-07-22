@@ -3,10 +3,8 @@ const express = require('express');
 const mysql = require('mysql2');
 const session = require('express-session');
 const flash = require('connect-flash');
-const multer = require('multer');
 const { hashPassword, verifyPassword } = require('./utils/hash');
 const fs = require('fs');
-const path = require('path');
 const productModel = require('./models/productModel');
 const categoryModel = require('./models/categoryModel');
 const reportModel = require('./models/reportModel');
@@ -15,21 +13,14 @@ const registrationModel = require('./models/registrationModel');
 const reservationModel = require('./models/reservationModel');
 const ratingModel = require('./models/ratingModel');
 const purchaseModel = require('./models/purchaseModel');
-const { ratingUpload, uploadDirectory } = require('./middleware/ratingUpload');
+const wishlistModel = require('./models/wishlistModel');
+const cartModel = require('./models/cartModel');
+const { ratingUpload } = require('./middleware/ratingUpload');
+const { productUpload } = require('./middleware/productUpload');
+const { reportUpload } = require('./middleware/reportUpload');
 const { isLoggedIn, isAdmin, isGuest, validateLogin } = require('./middleware/auth');
 
 const app = express();
-
-// Set up multer for file uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'public/images'); // Directory to save uploaded files
-    },
-    filename: (req, file, cb) => {
-        cb(null, file.originalname);
-    }
-});
-const upload = multer({ storage: storage });
 
 // Database connection (Azure MySQL Database Server)
 const db = mysql.createConnection({
@@ -106,15 +97,34 @@ app.get('/browse', (req, res) => {
                     console.error('Database query error:', ratingError.message);
                     return res.send('Error retrieving ratings');
                 }
-                const products = results.map((product) => ({
-                    ...product,
-                    ratingSummary: summaries.get(Number(product.id)) || { averageRating: 0, reviewCount: 0 }
-                }));
-                res.render('browse', {
-                    products: products,
-                    categories: categories,
-                    selectedCategory: categoryId,
-                    search: search
+
+                const renderBrowse = (wishlistProductIds = []) => {
+                    const wishlistedIds = new Set(wishlistProductIds);
+                    const products = results.map((product) => ({
+                        ...product,
+                        ratingSummary: summaries.get(Number(product.id)) || { averageRating: 0, reviewCount: 0 },
+                        isWishlisted: wishlistedIds.has(Number(product.id))
+                    }));
+
+                    res.render('product/browse', {
+                        products: products,
+                        categories: categories,
+                        selectedCategory: categoryId,
+                        search: search
+                    });
+                };
+
+                if (!req.session.user) {
+                    return renderBrowse();
+                }
+
+                wishlistModel.getProductIdsByUser(req.session.user.id, (wishlistError, wishlistProductIds) => {
+                    if (wishlistError) {
+                        console.error('Database query error:', wishlistError.message);
+                        return res.send('Error retrieving wishlist status');
+                    }
+
+                    renderBrowse(wishlistProductIds);
                 });
             });
         });
@@ -171,7 +181,7 @@ app.get('/products/:id', (req, res) => {
                         return res.send('Error retrieving ratings');
                     }
 
-                    res.render('productDetails', {
+                    res.render('product/productDetails', {
                         product: product,
                         currentUser: req.session.user || null,
                         sellerInfo: sellerInfo,
@@ -192,12 +202,12 @@ app.get('/sell', isLoggedIn, (req, res) => {
             console.error('Database query error:', error.message);
             return res.send('Error retrieving categories');
         }
-        res.render('sell', { categories: categories });
+        res.render('product/sell', { categories: categories });
     });
 });
 
 // Sell page - submit a new product (always starts as 'pending' until admin approves it)
-app.post('/sell', isLoggedIn, upload.single('image'), (req, res) => {
+app.post('/sell', isLoggedIn, productUpload.single('image'), (req, res) => {
     const { name, categoryId, description, price, condition, quantity, contactInfo } = req.body;
 
     let image;
@@ -250,13 +260,13 @@ app.get('/products/:id/edit', isLoggedIn, (req, res) => {
                 console.error('Database query error:', catError.message);
                 return res.send('Error retrieving categories');
             }
-            res.render('editProduct', { product: product, categories: categories });
+            res.render('product/editProduct', { product: product, categories: categories });
         });
     });
 });
 
 // Edit a listing - save the changes
-app.post('/products/:id/edit', isLoggedIn, upload.single('image'), (req, res) => {
+app.post('/products/:id/edit', isLoggedIn, productUpload.single('image'), (req, res) => {
     const productId = req.params.id;
 
     productModel.getProductById(productId, (error, results) => {
@@ -428,36 +438,16 @@ app.get('/sales-history', isLoggedIn, (req, res) => {
 
 
 // ==================== Kaido's routes ====================
-// Buyer ratings & reviews (with photo/video media) on a completed purchase.
+// Buyer ratings & reviews (a star rating, a comment, and one optional
+// photo) on a completed purchase.
 
 function toItemView(product) {
     return {
         id: product.id,
         name: product.name,
         price: Number(product.price),
-        category: product.categoryName || 'Other',
         image: product.image ? `/images/${product.image}` : null
     };
-}
-
-function getUploadedFiles(req) {
-    return [
-        ...(req.files?.images || []),
-        ...(req.files?.videos || [])
-    ];
-}
-
-function removeUploadedFiles(files) {
-    for (const file of files) {
-        fs.unlink(file.path, () => {});
-    }
-}
-
-function removeStoredMedia(mediaPaths) {
-    for (const mediaPath of mediaPaths) {
-        const fileName = path.basename(mediaPath);
-        fs.unlink(path.join(uploadDirectory, fileName), () => {});
-    }
 }
 
 // Writing a review requires an account that actually completed a purchase
@@ -519,7 +509,7 @@ app.get('/details/:id/ratings', (req, res, next) => {
                 }
 
                 if (!buyerId) {
-                    return res.render('details/ratings', {
+                    return res.render('rating/ratings', {
                         item: toItemView(product),
                         itemId: productId,
                         ratingSummary,
@@ -542,7 +532,7 @@ app.get('/details/:id/ratings', (req, res, next) => {
                             return next(ratingError);
                         }
 
-                        res.render('details/ratings', {
+                        res.render('rating/ratings', {
                             item: toItemView(product),
                             itemId: productId,
                             ratingSummary,
@@ -583,14 +573,14 @@ app.get('/details/:id/rating/new', requirePurchasedProduct, (req, res, next) => 
                 return next(ratingError);
             }
 
-            res.render('details/rating', {
+            res.render('rating/rating', {
                 pageTitle: existingRating ? 'Update your review' : 'Share your experience',
                 item: toItemView(product),
                 itemId: productId,
                 selectedRating: existingRating?.rating || 0,
                 comment: existingRating?.comment || '',
                 isAnonymous: existingRating?.is_anonymous || false,
-                existingMedia: existingRating?.media || [],
+                existingImage: existingRating?.image ? `/images/ratings/${existingRating.image}` : null,
                 success: null,
                 error: req.flash('error')[0] || null
             });
@@ -599,44 +589,75 @@ app.get('/details/:id/rating/new', requirePurchasedProduct, (req, res, next) => 
 });
 
 // Submit a new or updated review.
-app.post('/details/:id/rating/new', requirePurchasedProduct, ratingUpload, (req, res, next) => {
-    const productId = Number(req.params.id);
-    const rating = Number(req.body.rating);
-    const comment = req.body.comment?.trim() || null;
-    const isAnonymous = req.body.isAnonymous === '1';
-    const removeMedia = req.body.removeMedia === '1';
-    const mediaFiles = getUploadedFiles(req);
-
-    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-        removeUploadedFiles(mediaFiles);
-        req.flash('error', 'Please choose a rating from 1 to 5 stars');
-        return res.redirect(`/details/${productId}/rating/new`);
-    }
-
-    if (comment && comment.length > 500) {
-        removeUploadedFiles(mediaFiles);
-        req.flash('error', 'Your review must be 500 characters or fewer');
-        return res.redirect(`/details/${productId}/rating/new`);
-    }
-
-    ratingModel.upsert({
-        productId,
-        buyerId: req.ratingBuyerId,
-        sellerId: req.ratingPurchase.seller_id,
-        rating,
-        comment,
-        isAnonymous,
-        mediaFiles,
-        replaceMedia: mediaFiles.length > 0 || removeMedia
-    }, (error, result) => {
-        if (error) {
-            removeUploadedFiles(mediaFiles);
-            return next(error);
+app.post('/details/:id/rating/new', requirePurchasedProduct, (req, res, next) => {
+    ratingUpload(req, res, (uploadError) => {
+        if (uploadError) {
+            req.flash('error', uploadError.message);
+            return res.redirect(`/details/${req.params.id}/rating/new`);
         }
 
-        removeStoredMedia(result.oldMediaPaths);
-        req.flash('success', 'Your rating has been saved');
-        res.redirect(`/details/${productId}/ratings`);
+        const productId = Number(req.params.id);
+        const rating = Number(req.body.rating);
+        const comment = req.body.comment?.trim() || null;
+        const isAnonymous = req.body.isAnonymous === '1';
+        const image = req.file ? req.file.filename : null;
+
+        if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+            if (req.file) fs.unlink(req.file.path, () => {});
+            req.flash('error', 'Please choose a rating from 1 to 5 stars');
+            return res.redirect(`/details/${productId}/rating/new`);
+        }
+
+        if (comment && comment.length > 500) {
+            if (req.file) fs.unlink(req.file.path, () => {});
+            req.flash('error', 'Your review must be 500 characters or fewer');
+            return res.redirect(`/details/${productId}/rating/new`);
+        }
+
+        ratingModel.upsert({
+            productId,
+            buyerId: req.ratingBuyerId,
+            sellerId: req.ratingPurchase.seller_id,
+            rating,
+            comment,
+            isAnonymous,
+            image
+        }, (error) => {
+            if (error) {
+                return next(error);
+            }
+            req.flash('success', 'Your rating has been saved');
+            res.redirect(`/details/${productId}/ratings`);
+        });
+    });
+});
+
+// Full list of a seller's reviews - the "view more" destination linked from
+// the Reviews section of their public profile.
+app.get('/users/:id/reviews', (req, res, next) => {
+    const sellerId = Number(req.params.id);
+    if (!Number.isInteger(sellerId) || sellerId <= 0) {
+        return res.status(400).send('Invalid user ID');
+    }
+
+    userModel.findPublicById(sellerId, (error, results) => {
+        if (error) {
+            return next(error);
+        }
+        if (results.length === 0) {
+            return res.status(404).send('User not found');
+        }
+
+        ratingModel.getReviewsBySellerId(sellerId, (reviewsError, reviews) => {
+            if (reviewsError) {
+                return next(reviewsError);
+            }
+
+            res.render('rating/sellerReviews', {
+                seller: results[0],
+                reviews: reviews
+            });
+        });
     });
 });
 
@@ -660,12 +681,12 @@ app.get('/user_report/:productId', (req, res) => {
         if (results.length === 0) {
             return res.status(404).send('Product not found');
         }
-        res.render('user_report', { product: results[0] });
+        res.render('report/user_report', { product: results[0] });
     });
 });
 
 // Submit a product report
-app.post('/user_report', upload.single('evidenceImage'), (req, res) => {
+app.post('/user_report', reportUpload.single('evidenceImage'), (req, res) => {
     const { reported_product_id, reported_user_id, category, description } = req.body;
 
     let evidenceImage;
@@ -705,12 +726,12 @@ app.get('/report_user/:userId', (req, res) => {
         if (results.length === 0) {
             return res.status(404).send('User not found');
         }
-        res.render('report_user', { reportedUser: results[0] });
+        res.render('report/report_user', { reportedUser: results[0] });
     });
 });
 
 // Submit a user report
-app.post('/report_user', upload.single('evidenceImage'), (req, res) => {
+app.post('/report_user', reportUpload.single('evidenceImage'), (req, res) => {
     const { reported_user_id, category, description } = req.body;
 
     let evidenceImage;
@@ -746,7 +767,7 @@ app.get('/my_reports', (req, res) => {
             console.error('Database query error:', error.message);
             return res.send('Error retrieving your reports');
         }
-        res.render('my_reports', { reports: reports });
+        res.render('report/my_reports', { reports: reports });
     });
 });
 
@@ -758,7 +779,7 @@ app.get('/my_reports/:id/edit', (req, res) => {
         if (report.reporter_id !== TEMP_REPORTER_ID || report.status !== 'pending') {
             return res.redirect('/my_reports');
         }
-        res.render('edit_report', { report: report });
+        res.render('report/edit_report', { report: report });
     });
 });
 
@@ -1127,18 +1148,28 @@ app.get('/users/:id', isLoggedIn, (req, res) => {
                     return res.send('Error retrieving member listings');
                 }
 
-                res.render('publicProfile', {
-                    profile: profile,
-                    stats: stats,
-                    sellingProducts: sellingProducts,
-                    username: profile.name.trim().toLowerCase().replace(/\s+/g, '.'),
-                    initials: getInitials(profile.name),
-                    firstName: profile.name.trim().split(/\s+/)[0],
-                    lastSeen: describeLastSeen(profile.last_active),
-                    membershipLength: describeMembership(profile.created_at),
-                    positivePercent: positivePercent,
-                    isGoodSeller: stats.reviewCount >= 3 && positivePercent >= 90,
-                    isMe: req.session.user.id === profile.id
+                // Newest reviews for the "Reviews" section - only the first
+                // few are shown here, with a "view all" link to the rest.
+                ratingModel.getReviewsBySellerId(profileId, (reviewsError, reviews) => {
+                    if (reviewsError) {
+                        console.error('Database query error:', reviewsError.message);
+                        return res.send('Error retrieving member reviews');
+                    }
+
+                    res.render('publicProfile', {
+                        profile: profile,
+                        stats: stats,
+                        sellingProducts: sellingProducts,
+                        recentReviews: reviews.slice(0, 3),
+                        username: profile.name.trim().toLowerCase().replace(/\s+/g, '.'),
+                        initials: getInitials(profile.name),
+                        firstName: profile.name.trim().split(/\s+/)[0],
+                        lastSeen: describeLastSeen(profile.last_active),
+                        membershipLength: describeMembership(profile.created_at),
+                        positivePercent: positivePercent,
+                        isGoodSeller: stats.reviewCount >= 3 && positivePercent >= 90,
+                        isMe: req.session.user.id === profile.id
+                    });
                 });
             });
         });
@@ -1474,6 +1505,186 @@ app.get('/logout', (req, res) => {
 
 // ==================== Denna's routes ====================
 
+// Display the logged-in user's wishlist.
+app.get('/wishlist', isLoggedIn, (req, res) => {
+    wishlistModel.getWishlistByUser(req.session.user.id, (error, wishlistItems) => {
+        if (error) {
+            console.error('Error retrieving wishlist:', error.message);
+            return res.status(500).send('Error retrieving wishlist');
+        }
+
+        res.render('wishlist/wishlist', {
+            wishlistItems,
+            success_msg: req.flash('success'),
+            error_msg: req.flash('error')
+        });
+    });
+});
+
+// Add an available product belonging to another user to the wishlist.
+app.post('/wishlist/add/:productId', isLoggedIn, (req, res) => {
+    const redirectTarget = req.body.redirectTo === '/browse' ? '/browse' : '/wishlist';
+
+    wishlistModel.addToWishlist(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error adding to wishlist:', error.message);
+                req.flash('error', 'Unable to add the product.');
+            } else if (result.affectedRows === 0) {
+                req.flash('error', 'The product is unavailable, already saved, or belongs to you.');
+            } else {
+                req.flash('success', 'Product added to your wishlist.');
+            }
+
+            res.redirect(redirectTarget);
+        }
+    );
+});
+
+// Remove a product from only the logged-in user's wishlist.
+app.post('/wishlist/remove/:productId', isLoggedIn, (req, res) => {
+    const redirectTarget = req.body.redirectTo === '/browse' ? '/browse' : '/wishlist';
+
+    wishlistModel.removeFromWishlist(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error removing wishlist item:', error.message);
+                req.flash('error', 'Unable to remove the product.');
+            } else if (result.affectedRows === 0) {
+                req.flash('error', 'Wishlist item not found.');
+            } else {
+                req.flash('success', 'Product removed from your wishlist.');
+            }
+
+            res.redirect(redirectTarget);
+        }
+    );
+});
+
+// Display the logged-in user's cart and calculate its total.
+app.get('/cart', isLoggedIn, (req, res) => {
+    cartModel.getCartByUser(req.session.user.id, (error, cartItems) => {
+        if (error) {
+            console.error('Error retrieving cart:', error.message);
+            return res.status(500).send('Error retrieving cart');
+        }
+
+        const totalAmount = cartItems
+            .reduce((total, item) => total + Number(item.subtotal), 0)
+            .toFixed(2);
+
+        res.render('cart', {
+            cartItems,
+            totalAmount,
+            success_msg: req.flash('success'),
+            error_msg: req.flash('error')
+        });
+    });
+});
+
+// Add a product to the cart or increase its quantity up to available stock.
+app.post('/cart/add/:productId', isLoggedIn, (req, res) => {
+    cartModel.addToCart(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error adding to cart:', error.message);
+                req.flash('error', 'Unable to add the product.');
+            } else if (result.status === 'max_quantity') {
+                const unitLabel = result.availableQuantity === 1 ? 'unit is' : 'units are';
+                req.flash(
+                    'error',
+                    `Only ${result.availableQuantity} ${unitLabel} available, and ${result.availableQuantity === 1 ? 'it is' : 'they are'} already in your cart.`
+                );
+            } else if (result.status === 'own_product') {
+                req.flash('error', 'You cannot add your own product to the cart.');
+            } else if (result.status === 'not_found') {
+                req.flash('error', 'Product not found.');
+            } else if (result.status === 'unavailable') {
+                req.flash('error', 'This product is no longer available.');
+            } else if (result.status === 'added') {
+                req.flash('success', 'Product added to your cart.');
+            }
+
+            res.redirect('/cart');
+        }
+    );
+});
+
+// Increase quantity without exceeding the product's available stock.
+app.post('/cart/increase/:productId', isLoggedIn, (req, res) => {
+    cartModel.increaseQuantity(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error increasing cart quantity:', error.message);
+                req.flash('error', 'Unable to update the quantity.');
+            } else if (result.affectedRows === 0) {
+                req.flash('error', 'Maximum available quantity reached.');
+            }
+
+            res.redirect('/cart');
+        }
+    );
+});
+
+// Decrease quantity, removing the row when its quantity is already one.
+app.post('/cart/decrease/:productId', isLoggedIn, (req, res) => {
+    cartModel.decreaseQuantity(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error decreasing cart quantity:', error.message);
+                req.flash('error', 'Unable to update the quantity.');
+                return res.redirect('/cart');
+            }
+
+            if (result.affectedRows > 0) {
+                return res.redirect('/cart');
+            }
+
+            cartModel.removeFromCart(
+                req.session.user.id,
+                req.params.productId,
+                (removeError) => {
+                    if (removeError) {
+                        console.error('Error removing cart item:', removeError.message);
+                        req.flash('error', 'Unable to remove the product.');
+                    }
+                    res.redirect('/cart');
+                }
+            );
+        }
+    );
+});
+
+// Remove a product from only the logged-in user's cart.
+app.post('/cart/remove/:productId', isLoggedIn, (req, res) => {
+    cartModel.removeFromCart(
+        req.session.user.id,
+        req.params.productId,
+        (error, result) => {
+            if (error) {
+                console.error('Error removing cart item:', error.message);
+                req.flash('error', 'Unable to remove the product.');
+            } else if (result.affectedRows === 0) {
+                req.flash('error', 'Cart item not found.');
+            } else {
+                req.flash('success', 'Product removed from your cart.');
+            }
+
+            res.redirect('/cart');
+        }
+    );
+});
+
 
 // ==================== Zhen Cheng Chao's routes ====================
 
@@ -1502,7 +1713,7 @@ app.get('/reservations', isLoggedIn, (req, res) => {
             return res.status(500).send('Error retrieving reservations');
         }
 
-        res.render('reservations/index', {
+        res.render('reservation/index', {
             reservations,
             currentUser: req.session.user,
             errors: req.flash('error'),
@@ -1532,7 +1743,7 @@ app.get('/reservations/add/:productId', isLoggedIn, (req, res) => {
             return res.redirect('/products/' + product.id);
         }
 
-        res.render('reservations/create', {
+        res.render('reservation/create', {
             product,
             currentUser: req.session.user,
             errors: req.flash('error'),
@@ -1612,7 +1823,7 @@ app.get('/reservations/:id', isLoggedIn, (req, res) => {
             return res.status(403).send('You do not have permission to view this reservation.');
         }
 
-        res.render('reservations/details', {
+        res.render('reservation/details', {
             reservation,
             currentUser: req.session.user,
             errors: req.flash('error'),
@@ -1638,7 +1849,7 @@ app.get('/reservations/:id/edit', isLoggedIn, (req, res) => {
             return res.redirect('/reservations/' + reservation.id);
         }
 
-        res.render('reservations/edit', {
+        res.render('reservation/edit', {
             reservation,
             currentUser: req.session.user,
             errors: req.flash('error')
