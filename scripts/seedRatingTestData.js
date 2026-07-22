@@ -1,8 +1,10 @@
 require('dotenv').config();
 
-// One-off maintenance script, run manually with `node scripts/seedRatingTestData.js`.
-// It is not part of the running app, so it uses its own mysql2/promise
-// connection instead of the callback-style config/db.js the routes use.
+// One-off script, run manually with `node scripts/seedRatingTestData.js`.
+// Creates a few test buyer accounts and gives each of them a purchase +
+// rating for every existing product, so the ratings feature has real data
+// to show. Safe to run more than once - purchases and ratings are skipped
+// or updated rather than duplicated.
 const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
@@ -13,24 +15,18 @@ const pool = mysql.createPool({
     ssl: { rejectUnauthorized: true }
 });
 
-// These accounts are only for local/course-project testing and should not
-// be copied into a production database.
-const testAccounts = [
-    { name: 'Rating Test Buyer', email: 'rating.buyer1@campuscycle.test' },
+const testBuyers = [
+    { name: 'Rating Test Buyer 1', email: 'rating.buyer1@campuscycle.test' },
     { name: 'Rating Test Buyer 2', email: 'rating.buyer2@campuscycle.test' },
-    { name: 'Rating Test Buyer 3', email: 'rating.buyer3@campuscycle.test' },
-    { name: 'Rating Test Buyer 4', email: 'rating.buyer4@campuscycle.test' }
+    { name: 'Rating Test Buyer 3', email: 'rating.buyer3@campuscycle.test' }
 ];
 
 const comments = [
-    'The item matched the description and worked well during testing.',
-    'Collection was easy and the seller explained the item clearly.',
-    'Good value for a student budget and the condition was accurate.',
-    'The product was clean, functional and ready to use.',
-    'A smooth campus transaction with helpful communication.',
-    'The listing photos were accurate and pickup was on time.',
-    'Everything worked as expected after the purchase.',
-    'Useful item, fair price and a straightforward handover.'
+    'The item matched the description and worked well.',
+    'Smooth handover, the seller was easy to reach.',
+    'Good condition for the price.',
+    'Exactly as pictured, happy with the purchase.',
+    'Would buy from this seller again.'
 ];
 
 async function seedRatingTestData() {
@@ -39,115 +35,67 @@ async function seedRatingTestData() {
     try {
         await connection.beginTransaction();
 
-        // The password column is only filled in to satisfy the current
-        // schema - login isn't wired up for these accounts.
-        for (const account of testAccounts) {
+        for (const buyer of testBuyers) {
             await connection.execute(
                 `INSERT INTO users (name, email, password, role)
-                 VALUES (?, ?, ?, 'user')
+                 VALUES (?, ?, 'TEST_ACCOUNT_LOGIN_NOT_CONFIGURED', 'user')
                  ON DUPLICATE KEY UPDATE name = VALUES(name)`,
-                [account.name, account.email, 'TEST_ACCOUNT_LOGIN_NOT_CONFIGURED']
+                [buyer.name, buyer.email]
             );
         }
 
         const [buyers] = await connection.query(
-            `SELECT id, name, email
-             FROM users
-             WHERE email IN (?)
-             ORDER BY FIELD(email, ?)`,
-            [testAccounts.map((account) => account.email), testAccounts.map((account) => account.email)]
+            `SELECT id, name FROM users WHERE email IN (?)`,
+            [testBuyers.map((buyer) => buyer.email)]
         );
         const [products] = await connection.query(
-            `SELECT id, seller_id, name, price
-             FROM products
-             ORDER BY id`
+            `SELECT id, seller_id, price FROM products`
         );
 
         if (!products.length) {
-            throw new Error('No products found. Seed products before rating test data.');
+            throw new Error('No products found. Add products before seeding ratings.');
         }
 
-        const availablePairs = buyers.length * products.length;
-        if (availablePairs < 30) {
-            throw new Error(`Need at least 30 buyer/product pairs, but only ${availablePairs} are available.`);
-        }
+        let ratingValue = 5;
+        let commentIndex = 0;
 
-        // Buyers are paired with products in order: the first test account
-        // always ends up having purchased and rated every product first.
-        const ratingPairs = [];
         for (const buyer of buyers) {
             for (const product of products) {
-                if (ratingPairs.length < 30) {
-                    ratingPairs.push({ buyer, product });
-                }
+                // Each purchases row represents a completed transaction; the
+                // NOT EXISTS guard makes this script safe to run more than once.
+                await connection.execute(
+                    `INSERT INTO purchases (product_id, buyer_id, seller_id, reservation_id, price)
+                     SELECT ?, ?, ?, NULL, ?
+                     WHERE NOT EXISTS (
+                        SELECT 1 FROM purchases WHERE product_id = ? AND buyer_id = ?
+                     )`,
+                    [product.id, buyer.id, product.seller_id, product.price, product.id, buyer.id]
+                );
+
+                await connection.execute(
+                    `INSERT INTO ratings (product_id, buyer_id, seller_id, rating, comment, is_anonymous)
+                     VALUES (?, ?, ?, ?, ?, ?)
+                     ON DUPLICATE KEY UPDATE
+                        rating = VALUES(rating),
+                        comment = VALUES(comment),
+                        updated_at = CURRENT_TIMESTAMP`,
+                    [
+                        product.id,
+                        buyer.id,
+                        product.seller_id,
+                        ratingValue,
+                        comments[commentIndex % comments.length],
+                        commentIndex % 4 === 0 ? 1 : 0
+                    ]
+                );
+
+                ratingValue = ratingValue === 1 ? 5 : ratingValue - 1;
+                commentIndex++;
             }
         }
 
-        for (const [index, pair] of ratingPairs.entries()) {
-            const { buyer, product } = pair;
-
-            // Each purchases row represents a completed transaction; the
-            // NOT EXISTS guard makes this script safe to run more than once.
-            await connection.execute(
-                `INSERT INTO purchases
-                    (product_id, buyer_id, seller_id, reservation_id, price)
-                 SELECT ?, ?, ?, NULL, ?
-                 WHERE NOT EXISTS (
-                    SELECT 1 FROM purchases
-                    WHERE product_id = ? AND buyer_id = ?
-                 )`,
-                [
-                    product.id,
-                    buyer.id,
-                    product.seller_id,
-                    product.price,
-                    product.id,
-                    buyer.id
-                ]
-            );
-
-            const rating = ((index * 7 + product.id) % 5) + 1;
-            const comment = comments[index % comments.length];
-            const isAnonymous = index % 6 === 0 ? 1 : 0;
-
-            await connection.execute(
-                `INSERT INTO ratings
-                    (product_id, buyer_id, seller_id, rating, comment, is_anonymous)
-                 VALUES (?, ?, ?, ?, ?, ?)
-                 ON DUPLICATE KEY UPDATE
-                    seller_id = VALUES(seller_id),
-                    rating = VALUES(rating),
-                    comment = VALUES(comment),
-                    is_anonymous = VALUES(is_anonymous),
-                    updated_at = CURRENT_TIMESTAMP`,
-                [product.id, buyer.id, product.seller_id, rating, comment, isAnonymous]
-            );
-        }
-
         await connection.commit();
-
-        const buyerIds = buyers.map((buyer) => buyer.id);
-        const [[seedCounts]] = await pool.query(
-            `SELECT
-                (SELECT COUNT(*) FROM purchases WHERE buyer_id IN (?)) AS purchases,
-                (SELECT COUNT(*) FROM ratings WHERE buyer_id IN (?)) AS ratings`,
-            [buyerIds, buyerIds]
-        );
-        const [[mainBuyerCoverage]] = await pool.execute(
-            `SELECT
-                COUNT(DISTINCT p.product_id) AS purchased_products,
-                (SELECT COUNT(*) FROM products) AS total_products
-             FROM purchases p
-             WHERE p.buyer_id = ?`,
-            [buyers[0].id]
-        );
-
-        console.log(`Created/updated ${buyers.length} test buyer accounts.`);
-        console.log(`Test purchases: ${seedCounts.purchases}`);
-        console.log(`Test ratings: ${seedCounts.ratings}`);
-        console.log(
-            `Main test buyer coverage: ${mainBuyerCoverage.purchased_products}/${mainBuyerCoverage.total_products} products.`
-        );
+        console.log(`Seeded ratings for ${buyers.length} test buyers across ${products.length} products.`);
     } catch (error) {
         await connection.rollback();
         throw error;

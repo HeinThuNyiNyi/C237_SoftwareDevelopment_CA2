@@ -25,7 +25,7 @@
         <div class="review-card">
             <div class="review-thumb">
                 <% if (purchase.productImage) { %>
-                    <img src="/images/<%= purchase.productImage %>" alt="<%= purchase.productName %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
+                    <img src="/images/products/<%= purchase.productImage %>" alt="<%= purchase.productName %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
                 <% } else { %>
                     &#128230;
                 <% } %>
@@ -35,6 +35,9 @@
                 <p class="review-meta">Seller: <%= purchase.sellerName %></p>
                 <p class="review-meta">Price paid: $<%= Number(purchase.price).toFixed(2) %></p>
                 <p class="review-meta">Purchased: <%= new Date(purchase.purchased_at).toLocaleDateString() %></p>
+            </div>
+            <div class="review-actions">
+                <a href="/details/<%= purchase.product_id %>/rating/new" class="btn-primary">Give Rating</a>
             </div>
         </div>
     <% }); %>

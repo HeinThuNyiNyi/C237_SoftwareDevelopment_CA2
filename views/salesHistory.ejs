@@ -27,7 +27,7 @@
 <% } %>
 
 <!-- Status filter tabs -->
-<div class="admin-section" style="padding-top:0; display:flex; gap:8px;">
+<div class="admin-section" style="ppadding-top:0; display:flex; gap:8px;">
     <a href="/sales-history?status=all" class="<%= selectedStatus === 'all' ? 'btn-primary' : 'btn-outline' %>">All</a>
     <a href="/sales-history?status=pending" class="<%= selectedStatus === 'pending' ? 'btn-primary' : 'btn-outline' %>">Pending Approval</a>
     <a href="/sales-history?status=selling" class="<%= selectedStatus === 'selling' ? 'btn-primary' : 'btn-outline' %>">Selling</a>
@@ -45,7 +45,7 @@
         <div class="review-card">
             <div class="review-thumb">
                 <% if (listing.image) { %>
-                    <img src="/images/<%= listing.image %>" alt="<%= listing.name %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
+                    <img src="/images/products/<%= listing.image %>" alt="<%= listing.name %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
                 <% } else { %>
                     &#128230;
                 <% } %>
@@ -85,7 +85,7 @@
         <div class="review-card">
             <div class="review-thumb">
                 <% if (sale.productImage) { %>
-                    <img src="/images/<%= sale.productImage %>" alt="<%= sale.productName %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
+                    <img src="/images/products/<%= sale.productImage %>" alt="<%= sale.productName %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
                 <% } else { %>
                     &#128230;
                 <% } %>

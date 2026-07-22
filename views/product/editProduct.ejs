@@ -8,7 +8,7 @@
 </head>
 <body>
 
-<%- include('partials/navbar') %>
+<%- include('../partials/navbar') %>
 
 <section class="hero">
     <h1>Edit Listing</h1>
@@ -61,7 +61,7 @@
             <div style="margin-bottom:14px;">
                 <label for="image">Image</label><br>
                 <% if (product.image) { %>
-                    <img src="/images/<%= product.image %>" alt="<%= product.name %>" style="width:80px; height:80px; object-fit:cover; border-radius:8px; margin-bottom:8px; display:block;">
+                    <img src="/images/products/<%= product.image %>" alt="<%= product.name %>" style="width:80px; height:80px; object-fit:cover; border-radius:8px; margin-bottom:8px; display:block;">
                 <% } %>
                 <input type="file" id="image" name="image" accept="image/*">
                 <p class="review-meta">Leave empty to keep the current image.</p>
