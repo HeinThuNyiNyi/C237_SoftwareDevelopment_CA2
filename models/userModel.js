@@ -35,6 +35,15 @@ function getBannedUsers(callback) {
     db.query(sql, callback);
 }
 
+// Everyone who is not currently banned (total users minus banned users).
+// Admin accounts are excluded - this list is for managing student accounts.
+function getActiveUsers(callback) {
+    const sql = `SELECT id, name, email, role, created_at FROM users
+                 WHERE is_banned = 0 AND role != 'admin'
+                 ORDER BY name ASC`;
+    db.query(sql, callback);
+}
+
 // Find one user by their school email. Used by the login route.
 // Returns an array (mysql2 always does) - the route checks results.length.
 function findByEmail(email, callback) {
@@ -182,6 +191,7 @@ module.exports = {
     banUser,
     unbanUser,
     getBannedUsers,
+    getActiveUsers,
     findByEmail,
     findById,
     touchLastActive,

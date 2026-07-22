@@ -80,7 +80,7 @@
 
             <p class="review-meta">Category: <%= product.categoryName %></p>
             <p class="review-meta">Quantity available: <%= product.quantity %></p>
-            <p class="review-meta">Seller: <%= product.sellerName %> &middot; <a href="/report_user/<%= product.seller_id %>">Report Seller</a></p>
+            <p class="review-meta">Seller: <%= product.sellerName %></p>
             <p class="review-meta">Contact: <%= product.contact_info %></p>
 
             <p style="margin-top:14px;"><%= product.description %></p>
@@ -130,7 +130,9 @@
                     <button class="btn-secondary" disabled>Unavailable</button>
                 <% } %>
                 <a href="/details/<%= product.id %>/ratings" class="btn-outline">Give Rating</a>
-                <a href="/user_report/<%= product.id %>" class="btn-report" title="Report this listing">&#9873;</a>
+                <% if (currentUser && currentUser.id !== product.seller_id) { %>
+                    <a href="/user_report/<%= product.id %>" class="btn-report" title="Report this listing">&#9873;</a>
+                <% } %>
             </div>
         </div>
     </div>
