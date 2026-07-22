@@ -60,16 +60,25 @@
 
             <form action="/login" method="POST" novalidate>
 
-                <label class="auth-label" for="email">School Email</label>
-                <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    class="auth-input"
-                    placeholder="yourname@myrp.edu.sg"
-                    value="<%= oldEmail %>"
-                    required>
-                <p class="auth-hint">Must end with @myrp.edu.sg</p>
+                <label class="auth-label" for="studentId">Student ID</label>
+                <!-- Only the student ID is typed. The @myrp.edu.sg domain is
+                     shown here so the student can see the full address, and it
+                     is added again on the server, so the login can only ever be
+                     for an RP school email. -->
+                <div class="auth-email-group">
+                    <input
+                        type="text"
+                        id="studentId"
+                        name="studentId"
+                        class="auth-input auth-email-input"
+                        placeholder="25028720"
+                        value="<%= oldEmail %>"
+                        maxlength="80"
+                        autocomplete="username"
+                        required>
+                    <span class="auth-email-suffix">@myrp.edu.sg</span>
+                </div>
+                <p class="auth-hint">Log in with your RP student ID. The school domain is added for you.</p>
 
                 <label class="auth-label" for="password">Password</label>
                 <div class="auth-password-wrap">

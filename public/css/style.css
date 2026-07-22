@@ -2747,3 +2747,84 @@ details[open] .profile-toggle-summary::before { content: "\25BE  "; }
         grid-template-columns: 1fr;
     }
 }
+
+
+/* ============================================================
+   Admin: delete a student account  (Hein Thu Nyi Nyi)
+   ============================================================ */
+
+.userdel-note {
+    margin: 0 0 18px 0;
+    padding: 11px 14px;
+    background: #fdf6f5;
+    border: 1px solid #f5c6c2;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #a83228;
+}
+
+.userdel-impact {
+    margin: 10px 0 0 0;
+    font-size: 12.5px;
+    color: #a83228;
+}
+
+.userdel-impact-clear { color: var(--muted); }
+
+.reg-status-active {
+    background: #eaf7ed;
+    color: var(--green-dark);
+    border: 1px solid #c3e6cd;
+}
+
+.userdel-view {
+    text-decoration: none;
+    text-align: center;
+}
+
+.userdel-btn {
+    width: 100%;
+    padding: 8px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: inherit;
+    color: #fff;
+    background: #c0392b;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+.userdel-btn:hover { background: #a83228; }
+
+.userdel-section-gap { margin-top: 34px; }
+
+.userdel-hint {
+    margin: 0 0 14px 0;
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+.userdel-hint a { color: var(--green-dark); font-weight: 600; }
+
+/* Banned rows are tinted so the two sections stay distinguishable
+   even when scrolled past their headings. */
+.userdel-banned-card { border-color: #f0c8c3; background: #fffaf9; }
+
+/* Cancel Ban sits next to Delete Account, so it is deliberately the
+   calmer of the two - lifting a ban is reversible, deleting is not. */
+.userban-btn {
+    width: 100%;
+    padding: 8px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--green-dark);
+    background: #fff;
+    border: 1px solid var(--green-dark);
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+.userban-btn:hover { background: var(--green-dark); color: #fff; }

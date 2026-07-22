@@ -22,8 +22,8 @@
 
         <ul class="auth-points">
             <li><span class="auth-tick">&#10003;</span> Sign up with your RP school email</li>
-            <li><span class="auth-tick">&#10003;</span> Checked and approved by an admin</li>
-            <li><span class="auth-tick">&#10003;</span> Then buy and sell on campus</li>
+            <li><span class="auth-tick">&#10003;</span> Your RP student ID is your login</li>
+            <li><span class="auth-tick">&#10003;</span> Start buying and selling straight away</li>
         </ul>
 
         <p class="auth-foot-note">&copy; 2026 CampusCycle &mdash; Buy less. Reuse more.</p>
@@ -34,7 +34,7 @@
         <div class="auth-form-box">
 
             <h2 class="auth-title">Create your account</h2>
-            <p class="auth-sub">Your sign-up is checked by the school before you can log in.</p>
+            <p class="auth-sub">Only Republic Polytechnic students can register. You can log in as soon as your account is created.</p>
 
             <% if (errors && errors.length > 0) { %>
                 <div class="auth-alert auth-alert-error">
@@ -50,17 +50,17 @@
                        value="<%= old.name || '' %>" maxlength="100" required>
                 <div class="auth-gap"></div>
 
-                <label class="auth-label" for="username">School Email</label>
+                <label class="auth-label" for="username">Student ID</label>
                 <!-- Only the part before the @ is typed. The domain is fixed
                      here and again on the server, so a non-RP address cannot
                      be submitted. -->
                 <div class="auth-email-group">
                     <input type="text" id="username" name="username" class="auth-input auth-email-input"
-                           placeholder="yourname"
+                           placeholder="25028720"
                            value="<%= old.username || '' %>" maxlength="80" required>
                     <span class="auth-email-suffix">@myrp.edu.sg</span>
                 </div>
-                <p class="auth-hint">Only RP school emails can register.</p>
+                <p class="auth-hint">Enter your RP student ID only &mdash; the school domain is added for you.</p>
 
                 <label class="auth-label" for="phone">Contact Number <span class="auth-optional">(optional)</span></label>
                 <input type="text" id="phone" name="phone" class="auth-input"

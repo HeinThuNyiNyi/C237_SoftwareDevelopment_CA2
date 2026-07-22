@@ -14,9 +14,6 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     phone VARCHAR(20),
     role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
-    -- 0 while a self-registered student is still waiting for an admin.
-    -- DEFAULT 1 so accounts created directly by the school are usable at once.
-    is_approved TINYINT(1) NOT NULL DEFAULT 1,
     is_active TINYINT(1) NOT NULL DEFAULT 1,  -- 0 when the student closes their own account
     is_banned BOOLEAN NOT NULL DEFAULT FALSE,
     banned_until DATETIME NULL,

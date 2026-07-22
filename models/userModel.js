@@ -64,7 +64,7 @@ function touchLastActive(id, callback) {
 // page that another student is allowed to look at.
 function findPublicById(id, callback) {
     const sql = `
-        SELECT id, name, role, created_at, last_active, is_banned, is_active, is_approved
+        SELECT id, name, role, created_at, last_active, is_banned, is_active
         FROM users
         WHERE id = ?
     `;
@@ -108,44 +108,16 @@ function countAllUsers(callback) {
 // CREATE - a student registering themselves.
 //
 // The row goes straight into users, the same way the registration example
-// in the module inserts into its own users table. The account starts with
-// is_approved = 0, so the login route refuses it until an admin approves.
+// in the module inserts into its own users table. Holding an @myrp.edu.sg
+// address is what proves the person is an RP student, so the account is
+// usable immediately and there is no approval step.
 // The password arriving here is already SHA-1 hashed by the route.
 function createUser(user, callback) {
     const sql = `
-        INSERT INTO users (name, email, password, phone, role, is_approved)
-        VALUES (?, ?, ?, ?, 'user', 0)
+        INSERT INTO users (name, email, password, phone, role)
+        VALUES (?, ?, ?, ?, 'user')
     `;
     db.query(sql, [user.name, user.email, user.password, user.phone], callback);
-}
-
-// READ - every account waiting for an admin decision.
-function getPendingApprovals(callback) {
-    const sql = `
-        SELECT id, name, email, phone, created_at
-        FROM users
-        WHERE is_approved = 0
-        ORDER BY created_at DESC
-    `;
-    db.query(sql, callback);
-}
-
-// UPDATE - the admin letting a new student in.
-function approveUser(id, callback) {
-    const sql = 'UPDATE users SET is_approved = 1 WHERE id = ?';
-    db.query(sql, [id], callback);
-}
-
-// DELETE - the admin refusing a registration.
-//
-// A hard DELETE is safe here only because is_approved = 0 is part of the
-// WHERE clause. An unapproved account has never been able to log in, so it
-// cannot own any products, purchases, ratings or reports for the foreign
-// key cascade to reach. An approved account is closed with is_active = 0
-// instead - see deactivateAccount below.
-function rejectUser(id, callback) {
-    const sql = 'DELETE FROM users WHERE id = ? AND is_approved = 0';
-    db.query(sql, [id], callback);
 }
 
 // UPDATE - the student editing their own name and phone number.
@@ -163,16 +135,45 @@ function updatePassword(id, hashedPassword, callback) {
     db.query(sql, [hashedPassword, id], callback);
 }
 
-// The student closing their own account.
+// READ - every student account, for the admin's Active Users page.
+// Admins are left out: this page is for managing student accounts, and an
+// admin should not be able to delete a fellow admin from here.
+function getAllStudents(callback) {
+    const sql = `
+        SELECT id, name, email, phone, created_at, last_active,
+               is_banned, banned_until, ban_reason
+        FROM users
+        WHERE role = 'user'
+        ORDER BY name ASC
+    `;
+    db.query(sql, callback);
+}
+
+// Counts what a delete would destroy, so the confirmation can tell the
+// admin exactly what is about to be lost.
 //
-// The row is kept on purpose. Every foreign key pointing at users is
-// ON DELETE CASCADE, so removing the row would also delete their
-// listings, ratings, reports, reservations and purchase history -
-// including records that belong to the students they traded with.
-// Setting is_active = 0 blocks the login instead, which is the same
-// outcome for them without destroying anyone else's data.
-function deactivateAccount(id, callback) {
-    const sql = 'UPDATE users SET is_active = 0 WHERE id = ?';
+// Every foreign key pointing at users is ON DELETE CASCADE, so removing
+// one student also removes their listings and the purchase records and
+// reviews that OTHER students made with them. The admin needs to see that
+// before deciding, not afterwards.
+function getDeletionImpact(id, callback) {
+    const sql = `
+        SELECT
+            (SELECT COUNT(*) FROM products     WHERE seller_id = ?)                  AS listings,
+            (SELECT COUNT(*) FROM purchases    WHERE seller_id = ? OR buyer_id = ?)  AS purchases,
+            (SELECT COUNT(*) FROM ratings      WHERE seller_id = ? OR buyer_id = ?)  AS reviews,
+            (SELECT COUNT(*) FROM reservations WHERE seller_id = ? OR buyer_id = ?)  AS reservations
+    `;
+    db.query(sql, [id, id, id, id, id, id, id], callback);
+}
+
+// DELETE - the admin permanently removing a student account, for example
+// once that student has graduated and is no longer an RP student.
+//
+// role = 'user' is part of the WHERE clause on purpose, so this can never
+// delete an admin account even if an admin id is sent by hand.
+function deleteUser(id, callback) {
+    const sql = "DELETE FROM users WHERE id = ? AND role = 'user'";
     db.query(sql, [id], callback);
 }
 
@@ -188,10 +189,9 @@ module.exports = {
     getPublicStats,
     countAllUsers,
     createUser,
-    getPendingApprovals,
-    approveUser,
-    rejectUser,
     updateProfile,
     updatePassword,
-    deactivateAccount
+    getAllStudents,
+    getDeletionImpact,
+    deleteUser
 };

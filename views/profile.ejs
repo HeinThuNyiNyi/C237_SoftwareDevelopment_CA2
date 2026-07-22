@@ -199,38 +199,6 @@
         </div>
 
 
-        <!-- ---- 4. Close account ---- -->
-        <div class="profile-card profile-danger-card">
-            <div class="profile-card-head">
-                <h3 class="profile-danger-title">Close My Account</h3>
-            </div>
-
-            <p class="profile-danger-text">
-                Closing your account signs you out and stops you logging in again.
-                Your past listings, reviews and purchase records stay in the system,
-                because other students' records depend on them.
-                Only the school administrator can reopen a closed account.
-            </p>
-
-            <details class="profile-details-toggle">
-                <summary class="profile-toggle-summary profile-toggle-danger">I want to close my account</summary>
-
-                <form action="/profile/close" method="POST" class="profile-toggle-body"
-                      onsubmit="return confirm('Close your account? You will be signed out and will not be able to log in again.');">
-
-                    <label class="profile-field-label" for="closePassword">Confirm with your password</label>
-                    <input type="password" id="closePassword" name="currentPassword"
-                           class="profile-input" required>
-
-                    <label class="profile-field-label" for="confirmText">Type CLOSE to confirm</label>
-                    <input type="text" id="confirmText" name="confirmText"
-                           class="profile-input" placeholder="CLOSE" required>
-
-                    <button type="submit" class="profile-danger-btn">Close My Account</button>
-                </form>
-            </details>
-        </div>
-
     </main>
 
 </div>

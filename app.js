@@ -1014,14 +1014,6 @@ app.post('/login', validateLogin, (req, res) => {
                 return res.redirect('/login');
             }
 
-            // A registration still waiting for the admin is stopped here.
-            // Checked after the password so the message is not shown to
-            // someone guessing email addresses.
-            if (user.is_approved === 0) {
-                req.flash('error', 'Your account is still waiting for the school administrator to approve it. Please try again later.');
-                return res.redirect('/login');
-            }
-
             // A closed account is stopped here. Checked after the password so
             // the message is not shown to someone guessing email addresses.
             if (user.is_active === 0) {
@@ -1204,8 +1196,11 @@ app.get('/register', isGuest, (req, res) => {
 //
 // validateRegistration runs first. It checks the required fields and the
 // password length the same way the module's registration example does, and
-// it builds the full @myrp.edu.sg email on the server. Only if every check
-// passes does it call next() and reach this handler.
+// it builds the full @myrp.edu.sg email from the student ID on the server.
+// Only if every check passes does it call next() and reach this handler.
+//
+// Anyone holding an @myrp.edu.sg address is by definition an RP student, so
+// the account is usable straight away and no admin approval step is needed.
 app.post('/register', isGuest, validateRegistration, (req, res) => {
     const { name, email, phone, password } = req.body;
 
@@ -1235,62 +1230,9 @@ app.post('/register', isGuest, validateRegistration, (req, res) => {
                 console.error('Error creating user:', error.message);
                 return res.send('Error creating your account');
             }
-            req.flash('success', 'Thank you. Your account has been created and is waiting for the school administrator to approve it. You will be able to log in once it is approved.');
+            req.flash('success', 'Your account has been created. You can log in now with your student ID.');
             res.redirect('/login');
         });
-    });
-});
-
-
-// ---- Admin approval of new registrations ----
-
-// READ - accounts waiting for a decision.
-app.get('/admin/registrations', isLoggedIn, isAdmin, (req, res) => {
-    userModel.getPendingApprovals((error, pending) => {
-        if (error) {
-            console.error('Database query error:', error.message);
-            return res.send('Error retrieving registrations');
-        }
-
-        res.render('admin/registrations', {
-            registrations: pending,
-            pendingCount: pending.length,
-            errors: req.flash('error'),
-            success: req.flash('success')
-        });
-    });
-});
-
-// UPDATE - approve the account so the student can log in.
-app.post('/admin/registrations/:id/approve', isLoggedIn, isAdmin, (req, res) => {
-    userModel.approveUser(req.params.id, (error) => {
-        if (error) {
-            console.error('Error approving user:', error.message);
-            return res.send('Error approving the account');
-        }
-        req.flash('success', 'Account approved. That student can now log in.');
-        res.redirect('/admin/registrations');
-    });
-});
-
-// DELETE - refuse the registration and remove the row.
-//
-// Safe as a hard delete because the model only deletes rows that are still
-// unapproved, and an unapproved account has never been able to log in, so it
-// owns no products, purchases or ratings for the cascade to reach.
-app.post('/admin/registrations/:id/reject', isLoggedIn, isAdmin, (req, res) => {
-    userModel.rejectUser(req.params.id, (error, result) => {
-        if (error) {
-            console.error('Error rejecting user:', error.message);
-            return res.send('Error rejecting the registration');
-        }
-
-        if (result.affectedRows === 0) {
-            req.flash('error', 'That registration has already been approved and cannot be rejected here.');
-        } else {
-            req.flash('success', 'Registration rejected and removed.');
-        }
-        res.redirect('/admin/registrations');
     });
 });
 
@@ -1385,39 +1327,97 @@ app.post('/profile/password', isLoggedIn, (req, res) => {
     });
 });
 
-// Close the account. The row is kept - see deactivateAccount in userModel
-// for why deleting it would take other students' records with it.
-app.post('/profile/close', isLoggedIn, (req, res) => {
-    const currentPassword = req.body.currentPassword || '';
-    const confirmText = (req.body.confirmText || '').trim().toUpperCase();
+// ---- Admin user management (Hein Thu Nyi Nyi) ----
+//
+// Students cannot delete their own account. Only an administrator can
+// remove one, for example once a student has graduated and is no longer
+// an RP student.
 
-    // Typing CLOSE is a deliberate second step, so this cannot happen by
-    // accidentally clicking a button.
-    if (confirmText !== 'CLOSE') {
-        req.flash('error', 'Please type CLOSE to confirm you want to close your account.');
-        return res.redirect('/profile');
+// READ - list every student account.
+app.get('/admin/users', isLoggedIn, isAdmin, (req, res) => {
+    userModel.getAllStudents((error, students) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving user accounts');
+        }
+
+        // Active and banned accounts are shown as two separate sections, so
+        // the split happens here rather than being worked out in the view.
+        const show = () => res.render('admin/users', {
+            activeStudents: students.filter(student => !student.is_banned),
+            bannedStudents: students.filter(student => student.is_banned),
+            errors: req.flash('error'),
+            success: req.flash('success')
+        });
+
+        // Work out what deleting each student would destroy, so the
+        // confirmation popup can spell it out before anything is removed.
+        let pending = students.length;
+        if (pending === 0) {
+            return show();
+        }
+
+        students.forEach((student) => {
+            userModel.getDeletionImpact(student.id, (impactError, rows) => {
+                // If the count fails the page still renders; the popup just
+                // falls back to a plain warning rather than breaking.
+                student.impact = (!impactError && rows.length > 0) ? rows[0] : null;
+
+                if (--pending === 0) {
+                    show();
+                }
+            });
+        });
+    });
+});
+
+// UPDATE - lift a ban from the Users page.
+//
+// The unban itself is Ei Htet Htet Tun's userModel.unbanUser, reused rather
+// than rewritten. This route exists only so the admin is returned to
+// /admin/users afterwards; her own /admin/users/:id/unban route sends them
+// to the Reports page, which is right for that page but wrong for this one.
+app.post('/admin/users/:id/cancel-ban', isLoggedIn, isAdmin, (req, res) => {
+    userModel.unbanUser(req.params.id, (error) => {
+        if (error) {
+            console.error('Error cancelling ban:', error.message);
+            return res.send('Error cancelling the ban');
+        }
+        req.flash('success', 'Ban cancelled. That student can log in again.');
+        res.redirect('/admin/users');
+    });
+});
+
+// DELETE - permanently remove a student account.
+//
+// This is a hard delete. Every foreign key to users is ON DELETE CASCADE,
+// so the student's listings and the purchase records and reviews made with
+// them go too. That is why the page shows the counts in the confirmation
+// before the admin commits to it.
+app.post('/admin/users/:id/delete', isLoggedIn, isAdmin, (req, res) => {
+    const targetId = req.params.id;
+
+    // An admin must not be able to delete their own account and lock
+    // themselves out mid-session.
+    if (String(req.session.user.id) === String(targetId)) {
+        req.flash('error', 'You cannot delete your own account.');
+        return res.redirect('/admin/users');
     }
 
-    userModel.findById(req.session.user.id, (findError, results) => {
-        if (findError || results.length === 0) {
-            console.error('Database query error:', findError && findError.message);
-            return res.send('Error closing your account');
+    userModel.deleteUser(targetId, (error, result) => {
+        if (error) {
+            console.error('Error deleting user:', error.message);
+            return res.send('Error deleting the account');
         }
 
-        {
-            if (!verifyPassword(currentPassword, results[0].password)) {
-                req.flash('error', 'That password is not correct, so your account was not closed.');
-                return res.redirect('/profile');
-            }
-
-            userModel.deactivateAccount(req.session.user.id, (error) => {
-                if (error) {
-                    console.error('Error closing account:', error.message);
-                    return res.send('Error closing your account');
-                }
-                req.session.destroy(() => res.redirect('/login?closed=1'));
-            });
+        // The model only deletes rows where role = 'user', so an admin id
+        // simply matches nothing.
+        if (result.affectedRows === 0) {
+            req.flash('error', 'That account could not be deleted. Administrator accounts cannot be removed here.');
+        } else {
+            req.flash('success', 'Account deleted.');
         }
+        res.redirect('/admin/users');
     });
 });
 

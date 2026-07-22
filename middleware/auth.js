@@ -47,26 +47,31 @@ function isGuest(req, res, next) {
     res.redirect(destination);
 }
 
-// Server-side check of the login form. The HTML form validates too, but a
-// browser check can be bypassed, so the real check has to happen here.
+// Server-side check of the login form.
+//
+// The form only asks for the student ID, and the @myrp.edu.sg domain is
+// added here on the server. Building the address instead of accepting a
+// typed one means a non-RP email can never reach the database lookup, even
+// if someone edits the page or posts the form directly.
 function validateLogin(req, res, next) {
-    const email = (req.body.email || '').trim().toLowerCase();
+    const studentId = (req.body.studentId || '').trim().toLowerCase();
     const password = req.body.password || '';
 
-    if (!email || !password) {
-        req.flash('error', 'Please enter both your school email and password.');
-        req.flash('email', email);
+    if (!studentId || !password) {
+        req.flash('error', 'Please enter both your student ID and password.');
+        req.flash('email', studentId);
         return res.redirect('/login');
     }
 
-    if (!email.endsWith(RP_DOMAIN)) {
-        req.flash('error', 'Please use your RP school email (must end with ' + RP_DOMAIN + ').');
-        req.flash('email', email);
+    // Only the characters an RP school email actually uses.
+    if (!/^[a-z0-9._-]+$/.test(studentId)) {
+        req.flash('error', 'Please enter your student ID only, without the @' + RP_DOMAIN.slice(1) + ' part.');
+        req.flash('email', studentId);
         return res.redirect('/login');
     }
 
-    // Hand the cleaned-up values to the route so it does not repeat the work.
-    req.body.email = email;
+    // Hand the built address to the route so it does not repeat the work.
+    req.body.email = studentId + RP_DOMAIN;
     next();
 }
 

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Accounts &mdash; CampusCycle Admin</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="admin-body">
+
+<%- include('../partials/adminNavbar') %>
+
+<div class="admin-layout">
+    <%- include('../partials/adminSidebar') %>
+
+    <div class="admin-main">
+    <div class="admin-section">
+
+    <%
+        // One card layout shared by both sections. Declared once here so the
+        // active and banned lists cannot drift apart.
+        function impactParts(student) {
+            var impact = student.impact;
+            var parts = [];
+            if (impact) {
+                if (impact.listings > 0)     parts.push(impact.listings + ' listing' + (impact.listings === 1 ? '' : 's'));
+                if (impact.purchases > 0)    parts.push(impact.purchases + ' purchase record' + (impact.purchases === 1 ? '' : 's'));
+                if (impact.reviews > 0)      parts.push(impact.reviews + ' review' + (impact.reviews === 1 ? '' : 's'));
+                if (impact.reservations > 0) parts.push(impact.reservations + ' reservation' + (impact.reservations === 1 ? '' : 's'));
+            }
+            return parts;
+        }
+        function shortDate(value) {
+            return new Date(value).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+        }
+    %>
+
+    <% if (errors && errors.length > 0) { %>
+        <div class="auth-alert auth-alert-error">
+            <% errors.forEach(function(message) { %><p><%= message %></p><% }); %>
+        </div>
+    <% } %>
+
+    <% if (success && success.length > 0) { %>
+        <div class="auth-alert auth-alert-success">
+            <% success.forEach(function(message) { %><p><%= message %></p><% }); %>
+        </div>
+    <% } %>
+
+    <p class="userdel-note">
+        Deleting an account removes it from the database permanently. Use this when a
+        student has graduated and is no longer at Republic Polytechnic.
+    </p>
+
+
+    <!-- ===================== Active accounts ===================== -->
+    <h2 id="active">Active Accounts
+        <span class="reg-count-badge"><%= activeStudents.length %></span>
+    </h2>
+
+    <% if (activeStudents.length === 0) { %>
+        <p>There are no active student accounts.</p>
+    <% } %>
+
+    <% activeStudents.forEach(function(student) { %>
+        <%
+            var parts = impactParts(student);
+            var confirmMsg = 'Delete the account for ' + student.name + '?';
+            if (parts.length > 0) {
+                confirmMsg += '\n\nThis will ALSO permanently delete:\n  - ' + parts.join('\n  - ');
+            }
+            confirmMsg += '\n\nThis cannot be undone.';
+        %>
+        <div class="review-card">
+            <div class="review-body">
+                <div class="reg-head">
+                    <h4><%= student.name %></h4>
+                    <span class="reg-status reg-status-active">active</span>
+                </div>
+
+                <p class="review-meta">
+                    <%= student.email %><% if (student.phone) { %> &middot; <%= student.phone %><% } %>
+                </p>
+                <p class="review-meta">
+                    Joined <%= shortDate(student.created_at) %> &middot;
+                    <% if (student.last_active) { %>
+                        Last seen <%= shortDate(student.last_active) %>
+                    <% } else { %>
+                        Never logged in
+                    <% } %>
+                </p>
+
+                <% if (parts.length > 0) { %>
+                    <p class="userdel-impact">Deleting also removes: <%= parts.join(', ') %></p>
+                <% } else { %>
+                    <p class="userdel-impact userdel-impact-clear">No listings, purchases or reviews attached.</p>
+                <% } %>
+            </div>
+
+            <div class="review-actions reg-actions">
+                <a href="/users/<%= student.id %>" class="btn-outline userdel-view">View Profile</a>
+                <form action="/admin/users/<%= student.id %>/delete" method="POST"
+                      onsubmit="return confirm(<%- JSON.stringify(confirmMsg) %>);">
+                    <button type="submit" class="userdel-btn">Delete Account</button>
+                </form>
+            </div>
+        </div>
+    <% }); %>
+
+
+    <!-- ===================== Banned accounts ===================== -->
+    <h2 id="banned" class="userdel-section-gap">Banned Accounts
+        <span class="reg-count-badge"><%= bannedStudents.length %></span>
+    </h2>
+
+    <% if (bannedStudents.length === 0) { %>
+        <p>No accounts are currently banned.</p>
+    <% } else { %>
+        <!-- Bans are issued from the Reports page, which is where that
+             feature lives. They can be cancelled from here or from there. -->
+        <p class="userdel-hint">
+            Bans are issued from <a href="/admin/admin_report">Reports</a>.
+            Cancel a ban to let the student log in again, or delete the account entirely.
+        </p>
+    <% } %>
+
+    <% bannedStudents.forEach(function(student) { %>
+        <%
+            var parts = impactParts(student);
+            var confirmMsg = 'Delete the account for ' + student.name + '?';
+            if (parts.length > 0) {
+                confirmMsg += '\n\nThis will ALSO permanently delete:\n  - ' + parts.join('\n  - ');
+            }
+            confirmMsg += '\n\nThis cannot be undone.';
+        %>
+        <div class="review-card userdel-banned-card">
+            <div class="review-body">
+                <div class="reg-head">
+                    <h4><%= student.name %></h4>
+                    <span class="reg-status reg-status-rejected">banned</span>
+                </div>
+
+                <p class="review-meta">
+                    <%= student.email %><% if (student.phone) { %> &middot; <%= student.phone %><% } %>
+                </p>
+                <p class="review-meta">
+                    <% if (student.banned_until) { %>
+                        Banned until <%= shortDate(student.banned_until) %>
+                    <% } else { %>
+                        Banned permanently
+                    <% } %>
+                    &middot; Reason: <%= student.ban_reason || 'Not stated' %>
+                </p>
+
+                <% if (parts.length > 0) { %>
+                    <p class="userdel-impact">Deleting also removes: <%= parts.join(', ') %></p>
+                <% } else { %>
+                    <p class="userdel-impact userdel-impact-clear">No listings, purchases or reviews attached.</p>
+                <% } %>
+            </div>
+
+            <div class="review-actions reg-actions">
+                <a href="/users/<%= student.id %>" class="btn-outline userdel-view">View Profile</a>
+
+                <!-- Lifts the ban immediately so the student can log in again -->
+                <form action="/admin/users/<%= student.id %>/cancel-ban" method="POST"
+                      onsubmit="return confirm('Cancel the ban on <%= student.name %>? They will be able to log in again straight away.');">
+                    <button type="submit" class="userban-btn">Cancel Ban</button>
+                </form>
+
+                <form action="/admin/users/<%= student.id %>/delete" method="POST"
+                      onsubmit="return confirm(<%- JSON.stringify(confirmMsg) %>);">
+                    <button type="submit" class="userdel-btn">Delete Account</button>
+                </form>
+            </div>
+        </div>
+    <% }); %>
+
+    </div>
+    </div>
+</div>
+
+</body>
+</html>
