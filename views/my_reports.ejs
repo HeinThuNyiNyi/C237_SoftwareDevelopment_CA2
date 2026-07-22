@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Reports - CampusCycle</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<%- include('partials/navbar') %>
+
+<section class="hero">
+    <h1>My Reports</h1>
+    <p>Reports you have submitted, and what the admin decided.</p>
+</section>
+
+<div class="admin-section">
+
+    <% if (reports.length === 0) { %>
+        <p>You haven't reported anything yet.</p>
+    <% } %>
+
+    <% reports.forEach(function(report) { %>
+        <div class="review-card">
+            <div class="review-thumb">&#9873;</div>
+            <div class="review-body">
+                <h4>
+                    <% if (report.reportedProductName) { %>
+                        Listing: <%= report.reportedProductName %>
+                    <% } else if (report.reportedUserName) { %>
+                        User: <%= report.reportedUserName %>
+                    <% } else { %>
+                        Report #<%= report.id %>
+                    <% } %>
+                </h4>
+                <p class="review-meta">Category: <%= report.category.replace('_', ' ') %></p>
+                <p class="review-meta"><%= report.description %></p>
+                <p class="review-meta">Submitted: <%= new Date(report.created_at).toLocaleDateString() %></p>
+                <% if (report.admin_action) { %>
+                    <p class="review-meta">Admin note: <%= report.admin_action %></p>
+                <% } %>
+            </div>
+            <div class="review-actions">
+                <span class="status-badge status-<%= report.status %>" style="position:static; display:inline-block;"><%= report.status %></span>
+
+                <% if (report.status === 'pending') { %>
+                    <div style="margin-top: 10px;">
+                        <a href="/my_reports/<%= report.id %>/edit" class="btn-warning">Edit</a>
+                        <form action="/my_reports/<%= report.id %>/delete" method="POST" style="display:inline"
+                            onsubmit="return confirm('Delete this report?')">
+                            <button type="submit" class="btn-danger">Delete</button>
+                        </form>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    <% }); %>
+
+</div>
+
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+
+</body>
+</html>

@@ -77,12 +77,14 @@
 
     <section class="review-access" aria-labelledby="review-access-title">
       <div>
-        <p class="section-kicker">Purchase required</p>
+        <p class="section-kicker"><%= hasExistingReview ? 'Your review' : 'Purchase required' %></p>
         <h2 id="review-access-title">
           <%= hasExistingReview ? 'Update your review' : 'Bought this item?' %>
         </h2>
         <% if (canReview) { %>
-          <p>Your completed purchase is verified. You can now share or update your experience.</p>
+          <p><%= hasExistingReview
+            ? 'You can update or remove the review previously submitted by this account.'
+            : 'Your completed purchase is verified. You can now share your experience.' %></p>
         <% } else if (!isLoggedIn) { %>
           <p>Sign in with the account used for the purchase to unlock the review form.</p>
         <% } else { %>

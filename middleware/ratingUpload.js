@@ -45,12 +45,48 @@ const upload = multer({
 });
 
 // 图片最多 4 张，短视频最多 1 个。
-const ratingUpload = upload.fields([
+const parseRatingUpload = upload.fields([
     { name: 'images', maxCount: 4 },
     { name: 'videos', maxCount: 1 }
 ]);
 
+function getUploadedFiles(req) {
+    return Object.values(req.files || {}).flat();
+}
+
+function discardUploadedFiles(req) {
+    for (const file of getUploadedFiles(req)) {
+        fs.unlink(file.path, () => {});
+    }
+}
+
+// Convert expected upload failures into a useful form message instead of a
+// generic 500 response. Multer may already have written earlier files when a
+// later file fails, so remove those partial uploads before returning.
+function ratingUpload(req, res, next) {
+    parseRatingUpload(req, res, (error) => {
+        if (!error) {
+            return next();
+        }
+
+        discardUploadedFiles(req);
+
+        let message = 'The attachments could not be uploaded.';
+        if (error.code === 'LIMIT_FILE_SIZE') {
+            message = 'Each attachment must be 25 MB or smaller.';
+        } else if (error.code === 'LIMIT_FILE_COUNT' || error.code === 'LIMIT_UNEXPECTED_FILE') {
+            message = 'You can upload up to four images and one video.';
+        } else if (error.message === 'Only image and video files are allowed') {
+            message = error.message;
+        }
+
+        req.flash('error', message);
+        return res.redirect(`/details/${req.params.id}/rating/new`);
+    });
+}
+
 module.exports = {
     ratingUpload,
-    uploadDirectory
+    uploadDirectory,
+    getUploadedFiles
 };

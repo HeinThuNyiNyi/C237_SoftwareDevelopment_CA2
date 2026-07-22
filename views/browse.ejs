@@ -4,65 +4,57 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Browse - CampusCycle</title>
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-<nav class="navbar">
-    <a class="brand" href="/"><span class="brand-icon">&#9851;</span><span><span class="campus">Campus</span><span class="cycle">Cycle</span></span></a>
-    <div class="nav-links">
-        <a href="/">Home</a><a href="/browse">Browse</a><a href="/wishlist">Wishlist</a><a href="/cart">Cart</a>
-        <a href="/profile">Account</a><a href="/reservations">Reservations</a>
-        <a href="/sell" class="nav-cta">+ Sell an Item</a>
-    </div>
-</nav>
 
-<section class="hero"><h1>Browse Listings</h1><p>Find what you need from fellow students.</p></section>
+<%- include('partials/navbar') %>
 
-<% if (success) { %><p class="page-message is-success browse-message"><%= success %></p><% } %>
-<% if (error) { %><p class="page-message is-error browse-message"><%= error %></p><% } %>
-
-<form action="/browse" method="GET" class="filter-bar">
-    <input type="search" name="q" value="<%= search %>" placeholder="Search by product name" class="reason-input">
-    <select name="category" class="ban-select">
-        <option value="">All Categories</option>
-        <% categories.forEach((category) => { %>
-            <option value="<%= category.id %>" <%= String(selectedCategory) === String(category.id) ? 'selected' : '' %>><%= category.name %></option>
-        <% }) %>
-    </select>
-    <button type="submit" class="btn-primary">Search</button>
-    <a href="/browse" class="btn-outline">Clear</a>
-</form>
-
-<div class="section-title"><h2><%= products.length %> listing<%= products.length === 1 ? '' : 's' %> found</h2></div>
 <div class="product-grid">
-    <% if (!products.length) { %><p class="empty-state">No listings match your search.</p><% } %>
-    <% products.forEach((product) => { %>
+
+    <% if (products.length === 0) { %>
+        <p>No listings match your search.</p>
+    <% } %>
+
+    <% products.forEach(function(product) { %>
         <% const average = Number(product.ratingSummary.averageRating || 0); %>
         <% const count = Number(product.ratingSummary.reviewCount || 0); %>
-        <article class="product-card">
-            <a class="product-image" href="/products/<%= product.id %>">
-                <% if (product.image) { %><img src="/images/<%= product.image %>" alt="<%= product.name %>"><% } %>
+        <div class="product-card">
+            <div class="product-image">
+                <img src="/images/<%= product.image %>" alt="<%= product.name %>" style="width:100%; height:100%; object-fit:cover;">
                 <span class="status-badge status-<%= product.status %>"><%= product.status.replace('_', ' ') %></span>
-            </a>
-            <button class="wishlist-btn" title="Add to wishlist">&#9825;</button>
-            <div class="product-body">
-                <span class="condition-tag"><%= product.condition.replace('_', ' ') %></span>
-                <p class="product-title"><%= product.name %></p>
-                <p class="product-price">$<%= Number(product.price).toFixed(2) %></p>
-                <p class="seller-info"><%= product.categoryName %> &middot; Seller: <%= product.sellerName %></p>
-                <a href="/details/<%= product.id %>/ratings" class="rating">
-                    <span class="rating-stars" aria-hidden="true">
-                        <% for (let star = 1; star <= 5; star++) { %><span class="<%= star <= Math.round(average) ? 'is-filled' : '' %>">★</span><% } %>
-                    </span>
-                    <strong><%= average.toFixed(1) %></strong><span class="count">(<%= count %>)</span>
-                </a>
-                <div class="product-actions-full"><a href="/products/<%= product.id %>" class="btn-outline">View Details</a><button class="btn-report" title="Report this listing">&#9873;</button></div>
+                <button class="wishlist-btn" title="Add to wishlist">&#9825;</button>
             </div>
-        </article>
-    <% }) %>
+            <div class="product-body">
+                <p class="product-title"><%= product.name %></p>
+                <span class="condition-tag"><%= product.condition.replace('_', ' ') %></span>
+                <p class="product-price">$<%= Number(product.price).toFixed(2) %></p>
+                <p class="seller-info"><%= product.categoryName %> &middot; Seller: <%= product.sellerName %> &middot; <a href="/users/<%= product.seller_id %>">View Profile</a></p>
+
+                <!-- Rating comes from the ratings table; the link only opens the public reviews list. -->
+                <a href="/details/<%= product.id %>/ratings" class="rating" aria-label="<%= count ? `${average} out of 5 from ${count} reviews` : 'No verified reviews yet' %>">
+                    <span class="rating-stars" aria-hidden="true">
+                        <% for (let star = 1; star <= 5; star++) { %>
+                            <span class="<%= star <= Math.round(average) ? 'is-filled' : '' %>">★</span>
+                        <% } %>
+                    </span>
+                    <strong><%= average.toFixed(1) %></strong>
+                    <span class="count">(<%= count %>)</span>
+                </a>
+
+                <div class="product-actions-full">
+                    <a href="/products/<%= product.id %>" class="btn-outline">View Details</a>
+                    <a href="/user_report/<%= product.id %>" class="btn-report" title="Report this listing">&#9873;</a>
+                </div>
+            </div>
+        </div>
+    <% }); %>
+
 </div>
 
-<footer class="footer">&copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.</footer>
+<footer class="footer">
+    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
+</footer>
+
 </body>
 </html>

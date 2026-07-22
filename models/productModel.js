@@ -1,14 +1,15 @@
 const db = require('../config/db');
 
-// Products visible to buyers: only ones the admin has approved
-// (status is selling / reserved / sold_out - never pending or rejected)
+// Products visible to buyers: only ones the admin has approved and that are
+// still available (sold_out listings are hidden from Browse - once every
+// unit is gone there's nothing left for a buyer to act on there).
 // Supports filtering by category and a keyword search on the product name
 function getApprovedProducts(filters, callback) {
     let sql = `SELECT products.*, categories.name AS categoryName, users.name AS sellerName
                FROM products
                JOIN users ON products.seller_id = users.id
                LEFT JOIN categories ON products.category_id = categories.id
-               WHERE products.status IN ('selling', 'reserved', 'sold_out')`;
+               WHERE products.status IN ('selling', 'reserved')`;
     const params = [];
 
     if (filters.categoryId) {
@@ -26,16 +27,35 @@ function getApprovedProducts(filters, callback) {
     db.query(sql, params, callback);
 }
 
-// Most recently approved products, for the homepage "Recently Listed" section
-function getRecentApproved(limit, callback) {
-    const sql = `SELECT products.*, categories.name AS categoryName, users.name AS sellerName
+// A seller's own listings - pending admin approval, currently selling, or
+// reserved - for their Sales History page. status can narrow to just one
+// of those three, or 'all'/omitted for all three together.
+function getSellerListings(sellerId, status, callback) {
+    let sql = `SELECT products.*, categories.name AS categoryName
+               FROM products
+               LEFT JOIN categories ON products.category_id = categories.id
+               WHERE products.seller_id = ?`;
+    const params = [sellerId];
+
+    if (status && status !== 'all') {
+        sql += ' AND products.status = ?';
+        params.push(status);
+    } else {
+        sql += " AND products.status IN ('pending', 'selling', 'reserved')";
+    }
+
+    sql += ' ORDER BY products.created_at DESC';
+    db.query(sql, params, callback);
+}
+
+// A seller's currently-selling products, shown on their public profile page.
+function getSellingProductsBySeller(sellerId, callback) {
+    const sql = `SELECT products.*, categories.name AS categoryName
                  FROM products
-                 JOIN users ON products.seller_id = users.id
                  LEFT JOIN categories ON products.category_id = categories.id
-                 WHERE products.status IN ('selling', 'reserved', 'sold_out')
-                 ORDER BY products.created_at DESC
-                 LIMIT ?`;
-    db.query(sql, [limit], callback);
+                 WHERE products.seller_id = ? AND products.status = 'selling'
+                 ORDER BY products.created_at DESC`;
+    db.query(sql, [sellerId], callback);
 }
 
 // One product with its category and seller info, for the product details page
@@ -67,6 +87,33 @@ function createProduct(product, callback) {
     db.query(sql, params, callback);
 }
 
+// Update a listing's own details. Only meant to be used while it's still
+// 'selling' - the route checks that before calling this.
+function updateProduct(productId, product, callback) {
+    const sql = `UPDATE products
+                 SET category_id = ?, name = ?, description = ?, price = ?,
+                     \`condition\` = ?, quantity = ?, image = ?, contact_info = ?
+                 WHERE id = ?`;
+    const params = [
+        product.categoryId,
+        product.name,
+        product.description,
+        product.price,
+        product.condition,
+        product.quantity,
+        product.image,
+        product.contactInfo,
+        productId
+    ];
+    db.query(sql, params, callback);
+}
+
+// Permanently remove a listing (seller deleting their own post).
+function deleteProduct(productId, callback) {
+    const sql = 'DELETE FROM products WHERE id = ?';
+    db.query(sql, [productId], callback);
+}
+
 // All products waiting for admin review
 function getPendingProducts(callback) {
     const sql = `SELECT products.*, categories.name AS categoryName, users.name AS sellerName
@@ -92,9 +139,12 @@ function rejectProduct(productId, reason, callback) {
 
 module.exports = {
     getApprovedProducts,
-    getRecentApproved,
+    getSellerListings,
+    getSellingProductsBySeller,
     getProductById,
     createProduct,
+    updateProduct,
+    deleteProduct,
     getPendingProducts,
     approveProduct,
     rejectProduct

@@ -1,8 +1,20 @@
 require('dotenv').config();
 
-const pool = require('../config/database');
+// One-off maintenance script, run manually with `node scripts/seedRatingTestData.js`.
+// It is not part of the running app, so it uses its own mysql2/promise
+// connection instead of the callback-style config/db.js the routes use.
+const mysql = require('mysql2/promise');
 
-// 这些账户只用于本地/课程项目测试，不应复制到正式生产数据库。
+const pool = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    ssl: { rejectUnauthorized: true }
+});
+
+// These accounts are only for local/course-project testing and should not
+// be copied into a production database.
 const testAccounts = [
     { name: 'Rating Test Buyer', email: 'rating.buyer1@campuscycle.test' },
     { name: 'Rating Test Buyer 2', email: 'rating.buyer2@campuscycle.test' },
@@ -27,7 +39,8 @@ async function seedRatingTestData() {
     try {
         await connection.beginTransaction();
 
-        // 密码字段只是满足当前 schema；项目尚未合并登录功能，不能用它登录。
+        // The password column is only filled in to satisfy the current
+        // schema - login isn't wired up for these accounts.
         for (const account of testAccounts) {
             await connection.execute(
                 `INSERT INTO users (name, email, password, role)
@@ -59,7 +72,8 @@ async function seedRatingTestData() {
             throw new Error(`Need at least 30 buyer/product pairs, but only ${availablePairs} are available.`);
         }
 
-        // 买家按顺序与商品组合：第一个测试账户一定先购买并评价全部商品。
+        // Buyers are paired with products in order: the first test account
+        // always ends up having purchased and rated every product first.
         const ratingPairs = [];
         for (const buyer of buyers) {
             for (const product of products) {
@@ -72,7 +86,8 @@ async function seedRatingTestData() {
         for (const [index, pair] of ratingPairs.entries()) {
             const { buyer, product } = pair;
 
-            // purchases 中每行代表已完成交易；NOT EXISTS 使脚本可重复执行。
+            // Each purchases row represents a completed transaction; the
+            // NOT EXISTS guard makes this script safe to run more than once.
             await connection.execute(
                 `INSERT INTO purchases
                     (product_id, buyer_id, seller_id, reservation_id, price)

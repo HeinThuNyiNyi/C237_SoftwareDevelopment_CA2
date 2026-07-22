@@ -8,43 +8,13 @@
 </head>
 <body>
 
-<nav class="navbar">
-    <div class="brand">
-        <div class="brand-icon">&#9851;</div>
-        <span class="campus">Campus</span><span class="cycle">Cycle</span>
-    </div>
+<%
+    const reviewDateFormatter = new Intl.DateTimeFormat('en-SG', {
+        day: 'numeric', month: 'short', year: 'numeric'
+    });
+%>
 
-    <div class="nav-links">
-        <a href="/">Home</a>
-
-        <div class="dropdown">
-            <a href="/browse">Browse</a>
-            <div class="dropdown-menu">
-                <% categories.forEach(function(category) { %>
-                    <a href="/browse?category=<%= category.id %>"><%= category.name %></a>
-                <% }); %>
-            </div>
-        </div>
-
-        <a href="/wishlist">Wishlist</a>
-        <a href="/cart">Cart</a>
-
-        <div class="dropdown">
-            <a href="/profile">Account</a>
-            <div class="dropdown-menu">
-                <a href="/profile">My Profile</a>
-                <a href="/my-listings">My Listings</a>
-                <a href="/purchase-history">Purchase History</a>
-                <a href="/sales-history">Sales History</a>
-                <a href="/reservations">My Reservations</a>
-                <a href="/notifications">Notifications</a>
-                <a href="/logout">Logout</a>
-            </div>
-        </div>
-
-        <a href="/sell" class="nav-cta">+ Sell an Item</a>
-    </div>
-</nav>
+<%- include('partials/navbar') %>
 
 
 <div class="pubprof-wrap">
@@ -139,28 +109,72 @@
 
     </div>
 
-    <!-- ===== Their listings (product team owns this) ===== -->
+    <!-- ===== Their listings ===== -->
     <div class="pubprof-card">
         <div class="pubprof-section-head">
             <h3>Listings by <%= firstName %></h3>
         </div>
-        <p class="pubprof-placeholder">
-            This member's listings will appear here once the listings page is connected.
-        </p>
+
+        <% if (sellingProducts.length === 0) { %>
+            <p class="pubprof-placeholder">
+                <%= firstName %> doesn't have any active listings right now.
+            </p>
+        <% } else { %>
+            <div class="product-grid" style="padding:0;">
+                <% sellingProducts.forEach(function(product) { %>
+                    <div class="product-card">
+                        <div class="product-image">
+                            <img src="/images/<%= product.image %>" alt="<%= product.name %>" style="width:100%; height:100%; object-fit:cover;">
+                            <span class="status-badge status-<%= product.status %>"><%= product.status.replace('_', ' ') %></span>
+                        </div>
+                        <div class="product-body">
+                            <p class="product-title"><%= product.name %></p>
+                            <span class="condition-tag"><%= product.condition.replace('_', ' ') %></span>
+                            <p class="product-price">$<%= Number(product.price).toFixed(2) %></p>
+                            <div class="product-actions-full">
+                                <a href="/products/<%= product.id %>" class="btn-outline">View Details</a>
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+        <% } %>
     </div>
 
-    <!-- ===== Their reviews (ratings team owns this) ===== -->
+    <!-- ===== Verified reviews received as a seller ===== -->
     <div class="pubprof-card">
         <div class="pubprof-section-head">
             <h3>Reviews</h3>
         </div>
-        <% if (stats.reviewCount === 0) { %>
+        <% if (receivedReviews.length === 0) { %>
             <p class="pubprof-placeholder">No reviews yet.</p>
         <% } else { %>
-            <p class="pubprof-placeholder">
-                <%= stats.reviewCount %> review<%= stats.reviewCount === 1 ? '' : 's' %> received.
-                Individual reviews will appear here once the reviews page is connected.
-            </p>
+            <div class="pubprof-reviews">
+                <% receivedReviews.forEach(function(review) { %>
+                    <article class="pubprof-review">
+                        <div class="pubprof-review-head">
+                            <div>
+                                <strong><%= review.authorLabel %></strong>
+                                <span class="verified-label">Verified purchase</span>
+                            </div>
+                            <time datetime="<%= new Date(review.updatedAt).toISOString() %>">
+                                <%= reviewDateFormatter.format(new Date(review.updatedAt)) %>
+                            </time>
+                        </div>
+                        <div class="pubprof-review-stars" aria-label="<%= review.rating %> out of 5 stars">
+                            <% for (let star = 1; star <= 5; star++) { %>
+                                <span class="<%= star <= review.rating ? 'is-filled' : '' %>" aria-hidden="true">★</span>
+                            <% } %>
+                        </div>
+                        <p class="pubprof-review-product">
+                            Review for <a href="/products/<%= review.productId %>"><%= review.productName %></a>
+                        </p>
+                        <p class="pubprof-review-comment">
+                            <%= review.comment || 'This buyer left a star rating without a written comment.' %>
+                        </p>
+                    </article>
+                <% }); %>
+            </div>
         <% } %>
     </div>
 

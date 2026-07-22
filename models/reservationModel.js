@@ -275,6 +275,28 @@ function completeReservation(reservationId, sellerId, callback) {
     });
 }
 
+// Every reservation across all buyers/sellers, for the admin Reservations
+// page. status can narrow to one status, or 'all'/omitted for everyone.
+function getAllReservationsForAdmin(status, callback) {
+    let sql = `SELECT reservations.*,
+                      products.name AS product_name,
+                      buyers.name AS buyer_name,
+                      sellers.name AS seller_name
+               FROM reservations
+               JOIN products ON reservations.product_id = products.id
+               JOIN users AS buyers ON reservations.buyer_id = buyers.id
+               JOIN users AS sellers ON reservations.seller_id = sellers.id`;
+    const params = [];
+
+    if (status && status !== 'all') {
+        sql += ' WHERE reservations.status = ?';
+        params.push(status);
+    }
+
+    sql += ' ORDER BY reservations.created_at DESC';
+    db.query(sql, params, callback);
+}
+
 module.exports = {
     createReservation,
     findActiveReservation,
@@ -286,5 +308,6 @@ module.exports = {
     acceptProposal,
     cancelReservation,
     deleteReservation,
-    completeReservation
+    completeReservation,
+    getAllReservationsForAdmin
 };
