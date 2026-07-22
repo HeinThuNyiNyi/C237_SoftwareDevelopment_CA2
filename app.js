@@ -109,15 +109,34 @@ app.get('/browse', (req, res) => {
                     console.error('Database query error:', ratingError.message);
                     return res.send('Error retrieving ratings');
                 }
-                const products = results.map((product) => ({
-                    ...product,
-                    ratingSummary: summaries.get(Number(product.id)) || { averageRating: 0, reviewCount: 0 }
-                }));
-                res.render('browse', {
-                    products: products,
-                    categories: categories,
-                    selectedCategory: categoryId,
-                    search: search
+
+                const renderBrowse = (wishlistProductIds = []) => {
+                    const wishlistedIds = new Set(wishlistProductIds);
+                    const products = results.map((product) => ({
+                        ...product,
+                        ratingSummary: summaries.get(Number(product.id)) || { averageRating: 0, reviewCount: 0 },
+                        isWishlisted: wishlistedIds.has(Number(product.id))
+                    }));
+
+                    res.render('browse', {
+                        products: products,
+                        categories: categories,
+                        selectedCategory: categoryId,
+                        search: search
+                    });
+                };
+
+                if (!req.session.user) {
+                    return renderBrowse();
+                }
+
+                wishlistModel.getProductIdsByUser(req.session.user.id, (wishlistError, wishlistProductIds) => {
+                    if (wishlistError) {
+                        console.error('Database query error:', wishlistError.message);
+                        return res.send('Error retrieving wishlist status');
+                    }
+
+                    renderBrowse(wishlistProductIds);
                 });
             });
         });
@@ -1634,6 +1653,8 @@ app.get('/wishlist', isLoggedIn, (req, res) => {
 
 // Add an available product belonging to another user to the wishlist.
 app.post('/wishlist/add/:productId', isLoggedIn, (req, res) => {
+    const redirectTarget = req.body.redirectTo === '/browse' ? '/browse' : '/wishlist';
+
     wishlistModel.addToWishlist(
         req.session.user.id,
         req.params.productId,
@@ -1647,13 +1668,15 @@ app.post('/wishlist/add/:productId', isLoggedIn, (req, res) => {
                 req.flash('success', 'Product added to your wishlist.');
             }
 
-            res.redirect('/wishlist');
+            res.redirect(redirectTarget);
         }
     );
 });
 
 // Remove a product from only the logged-in user's wishlist.
 app.post('/wishlist/remove/:productId', isLoggedIn, (req, res) => {
+    const redirectTarget = req.body.redirectTo === '/browse' ? '/browse' : '/wishlist';
+
     wishlistModel.removeFromWishlist(
         req.session.user.id,
         req.params.productId,
@@ -1667,7 +1690,7 @@ app.post('/wishlist/remove/:productId', isLoggedIn, (req, res) => {
                 req.flash('success', 'Product removed from your wishlist.');
             }
 
-            res.redirect('/wishlist');
+            res.redirect(redirectTarget);
         }
     );
 });

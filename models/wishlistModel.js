@@ -18,6 +18,20 @@ function getWishlistByUser(userId, callback) {
     db.query(sql, [userId], callback);
 }
 
+function getProductIdsByUser(userId, callback) {
+    const sql = `SELECT product_id
+                 FROM wishlists
+                 WHERE user_id = ?`;
+
+    db.query(sql, [userId], (error, rows) => {
+        if (error) {
+            return callback(error);
+        }
+
+        callback(null, rows.map((row) => Number(row.product_id)));
+    });
+}
+
 function addToWishlist(userId, productId, callback) {
     const sql = `INSERT IGNORE INTO wishlists (user_id, product_id)
                  SELECT ?, products.id
@@ -38,6 +52,7 @@ function removeFromWishlist(userId, productId, callback) {
 
 module.exports = {
     getWishlistByUser,
+    getProductIdsByUser,
     addToWishlist,
     removeFromWishlist
 };

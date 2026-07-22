@@ -213,6 +213,24 @@ body {
     align-items: center;
     justify-content: center;
     color: #d81b60;
+    text-decoration: none;
+}
+
+.product-wishlist-form {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    margin: 0;
+}
+
+.product-wishlist-form .wishlist-btn {
+    position: static;
+}
+
+.wishlist-btn.active-wishlist {
+    background: #d81b60;
+    color: #fff;
 }
 
 .product-body {
