@@ -109,14 +109,42 @@
           <p class="section-kicker">Community feedback</p>
           <h2 id="reviews-title">What buyers said</h2>
         </div>
-        <span><%= reviewCount %> total</span>
+        <span><%= reviews.length %> shown · <%= reviewCount %> total</span>
       </div>
+
+      <form class="review-filter-form" action="/details/<%= itemId %>/ratings" method="GET" aria-label="Filter reviews">
+        <label>
+          <span>Star rating</span>
+          <select name="rating">
+            <option value="">All ratings</option>
+            <% for (let rating = 5; rating >= 1; rating--) { %>
+              <option value="<%= rating %>" <%= reviewFilters.rating === rating ? 'selected' : '' %>><%= rating %> stars</option>
+            <% } %>
+          </select>
+        </label>
+        <label>
+          <span>Sort by</span>
+          <select name="sort">
+            <option value="newest" <%= reviewFilters.sort === 'newest' ? 'selected' : '' %>>Newest</option>
+            <option value="highest" <%= reviewFilters.sort === 'highest' ? 'selected' : '' %>>Highest rating</option>
+            <option value="lowest" <%= reviewFilters.sort === 'lowest' ? 'selected' : '' %>>Lowest rating</option>
+          </select>
+        </label>
+        <label class="media-filter-option">
+          <input type="checkbox" name="media" value="1" <%= reviewFilters.withMedia ? 'checked' : '' %>>
+          <span>Photos or videos only</span>
+        </label>
+        <div class="review-filter-actions">
+          <button type="submit">Apply</button>
+          <a href="/details/<%= itemId %>/ratings#reviews-list">Reset</a>
+        </div>
+      </form>
 
       <% if (!reviews.length) { %>
         <div class="reviews-empty">
           <span aria-hidden="true">☆</span>
-          <h3>No reviews yet</h3>
-          <p>Once a verified buyer shares a review, it will appear here.</p>
+          <h3><%= reviewCount ? 'No reviews match these filters' : 'No reviews yet' %></h3>
+          <p><%= reviewCount ? 'Try a different star rating or include reviews without media.' : 'Once a verified buyer shares a review, it will appear here.' %></p>
         </div>
       <% } %>
 

@@ -11,6 +11,17 @@ const uploadDirectory = path.join(
     'ratings'
 );
 
+// 只允许浏览器可安全展示的常见格式；SVG 和任意压缩包不会进入公开目录。
+const allowedMimeExtensions = new Map([
+    ['image/jpeg', '.jpg'],
+    ['image/png', '.png'],
+    ['image/webp', '.webp'],
+    ['image/gif', '.gif'],
+    ['video/mp4', '.mp4'],
+    ['video/webm', '.webm'],
+    ['video/quicktime', '.mov']
+]);
+
 // 第一次启动时自动建立上传目录，避免服务器因目录不存在而失败。
 fs.mkdirSync(uploadDirectory, { recursive: true });
 
@@ -19,7 +30,8 @@ const storage = multer.diskStorage({
         callback(null, uploadDirectory);
     },
     filename: (req, file, callback) => {
-        const extension = path.extname(file.originalname).toLowerCase();
+        // 扩展名由允许的 MIME 类型决定，不信任用户提供的原始文件名。
+        const extension = allowedMimeExtensions.get(file.mimetype);
         const safeName = `${Date.now()}-${crypto.randomUUID()}${extension}`;
         callback(null, safeName);
     }
@@ -33,11 +45,8 @@ const upload = multer({
         fileSize: 25 * 1024 * 1024
     },
     fileFilter: (req, file, callback) => {
-        const isImage = file.mimetype.startsWith('image/');
-        const isVideo = file.mimetype.startsWith('video/');
-
-        if (!isImage && !isVideo) {
-            return callback(new Error('Only image and video files are allowed'));
+        if (!allowedMimeExtensions.has(file.mimetype)) {
+            return callback(new Error('Only JPG, PNG, WebP, GIF, MP4, WebM and MOV files are allowed'));
         }
 
         callback(null, true);
@@ -76,7 +85,10 @@ function ratingUpload(req, res, next) {
             message = 'Each attachment must be 25 MB or smaller.';
         } else if (error.code === 'LIMIT_FILE_COUNT' || error.code === 'LIMIT_UNEXPECTED_FILE') {
             message = 'You can upload up to four images and one video.';
-        } else if (error.message === 'Only image and video files are allowed') {
+        } else if (
+            error.message === 'Only image and video files are allowed'
+            || error.message.startsWith('Only JPG, PNG, WebP')
+        ) {
             message = error.message;
         }
 
@@ -88,5 +100,6 @@ function ratingUpload(req, res, next) {
 module.exports = {
     ratingUpload,
     uploadDirectory,
-    getUploadedFiles
+    getUploadedFiles,
+    allowedMimeExtensions
 };

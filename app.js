@@ -91,7 +91,12 @@ app.get('/', (req, res) => {
 // Browse page - approved listings only, filterable by category and searchable by name
 app.get('/browse', (req, res) => {
     const categoryId = req.query.category || '';
-    const search = req.query.q || '';
+    const search = (req.query.q || '').trim();
+    const minRating = [1, 2, 3, 4, 5].includes(Number(req.query.minRating))
+        ? Number(req.query.minRating)
+        : 0;
+    const allowedSorts = ['newest', 'top_rated', 'most_reviewed', 'price_low', 'price_high'];
+    const sort = allowedSorts.includes(req.query.sort) ? req.query.sort : 'newest';
 
     categoryModel.getAllCategories((catError, categories) => {
         if (catError) {
@@ -109,12 +114,10 @@ app.get('/browse', (req, res) => {
                     console.error('Database query error:', ratingError.message);
                     return res.send('Error retrieving ratings');
                 }
-
                 const renderBrowse = (wishlistProductIds = []) => {
                     const wishlistedIds = new Set(wishlistProductIds);
-                    const products = results.map((product) => ({
+                    const products = prepareMarketplaceProducts(results, summaries, minRating, sort).map((product) => ({
                         ...product,
-                        ratingSummary: summaries.get(Number(product.id)) || { averageRating: 0, reviewCount: 0 },
                         isWishlisted: wishlistedIds.has(Number(product.id))
                     }));
 
@@ -122,7 +125,11 @@ app.get('/browse', (req, res) => {
                         products: products,
                         categories: categories,
                         selectedCategory: categoryId,
-                        search: search
+                        search: search,
+                        selectedMinRating: minRating,
+                        selectedSort: sort,
+                        success: req.flash('success')[0] || null,
+                        error: req.flash('error')[0] || null
                     });
                 };
 
@@ -462,6 +469,71 @@ function toItemView(product) {
     };
 }
 
+// Add verified rating summaries without replacing the shared callback-based
+// product model. Rating filters and ranking are intentionally applied after
+// the team-owned listing query has completed.
+function prepareMarketplaceProducts(products, summaries, minRating, sort) {
+    const decorated = products.map((product) => ({
+        ...product,
+        ratingSummary: summaries.get(Number(product.id)) || {
+            averageRating: 0,
+            reviewCount: 0
+        }
+    }));
+    const reviewTotal = decorated.reduce(
+        (total, product) => total + Number(product.ratingSummary.reviewCount || 0),
+        0
+    );
+    const globalAverage = reviewTotal
+        ? decorated.reduce((total, product) => (
+            total
+            + Number(product.ratingSummary.averageRating || 0)
+                * Number(product.ratingSummary.reviewCount || 0)
+        ), 0) / reviewTotal
+        : 0;
+    const weightedRating = (product) => {
+        const average = Number(product.ratingSummary.averageRating || 0);
+        const count = Number(product.ratingSummary.reviewCount || 0);
+        const priorWeight = 3;
+        return count
+            ? (count / (count + priorWeight)) * average
+                + (priorWeight / (count + priorWeight)) * globalAverage
+            : 0;
+    };
+    const filtered = decorated.filter((product) => (
+        !minRating || Number(product.ratingSummary.averageRating || 0) >= minRating
+    ));
+
+    const comparators = {
+        top_rated: (left, right) => (
+            weightedRating(right) - weightedRating(left)
+            || Number(right.ratingSummary.reviewCount) - Number(left.ratingSummary.reviewCount)
+        ),
+        most_reviewed: (left, right) => (
+            Number(right.ratingSummary.reviewCount) - Number(left.ratingSummary.reviewCount)
+            || Number(right.ratingSummary.averageRating) - Number(left.ratingSummary.averageRating)
+        ),
+        price_low: (left, right) => Number(left.price) - Number(right.price),
+        price_high: (left, right) => Number(right.price) - Number(left.price)
+    };
+
+    return comparators[sort] ? [...filtered].sort(comparators[sort]) : filtered;
+}
+
+function filterPublicReviews(reviews, filters) {
+    const filtered = reviews.filter((review) => (
+        (!filters.rating || review.rating === filters.rating)
+        && (!filters.withMedia || review.media.length > 0)
+    ));
+    const newestFirst = (left, right) => new Date(right.updatedAt) - new Date(left.updatedAt);
+    const comparators = {
+        highest: (left, right) => right.rating - left.rating || newestFirst(left, right),
+        lowest: (left, right) => left.rating - right.rating || newestFirst(left, right),
+        newest: newestFirst
+    };
+    return [...filtered].sort(comparators[filters.sort] || newestFirst);
+}
+
 function removeUploadedFiles(files) {
     for (const file of files) {
         fs.unlink(file.path, () => {});
@@ -527,6 +599,16 @@ app.get('/details/:id/ratings', (req, res, next) => {
         return res.status(400).send('Invalid product ID');
     }
 
+    const reviewFilters = {
+        rating: [1, 2, 3, 4, 5].includes(Number(req.query.rating))
+            ? Number(req.query.rating)
+            : 0,
+        withMedia: req.query.media === '1',
+        sort: ['newest', 'highest', 'lowest'].includes(req.query.sort)
+            ? req.query.sort
+            : 'newest'
+    };
+
     productModel.getProductById(productId, (error, results) => {
         if (error) {
             return next(error);
@@ -546,13 +628,15 @@ app.get('/details/:id/ratings', (req, res, next) => {
                 if (reviewsError) {
                     return next(reviewsError);
                 }
+                const visibleReviews = filterPublicReviews(reviews, reviewFilters);
 
                 if (!buyerId) {
                     return res.render('details/ratings', {
                         item: toItemView(product),
                         itemId: productId,
                         ratingSummary,
-                        reviews,
+                        reviews: visibleReviews,
+                        reviewFilters,
                         isLoggedIn: false,
                         canReview: false,
                         hasExistingReview: false,
@@ -575,7 +659,8 @@ app.get('/details/:id/ratings', (req, res, next) => {
                             item: toItemView(product),
                             itemId: productId,
                             ratingSummary,
-                            reviews,
+                            reviews: visibleReviews,
+                            reviewFilters,
                             isLoggedIn: true,
                             canReview: Boolean(purchase) || Boolean(existingRating),
                             hasExistingReview: Boolean(existingRating),
