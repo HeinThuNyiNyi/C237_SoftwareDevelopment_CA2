@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Users - CampusCycle Admin</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="admin-body">
+
+<%- include('../partials/adminNavbar') %>
+
+<section class="hero">
+    <h1>Users</h1>
+    <p>Everyone with a CampusCycle account, and who is currently banned.</p>
+</section>
+
+<div class="admin-layout">
+    <%- include('../partials/adminSidebar') %>
+
+    <div class="admin-main">
+        <!-- Status filter tabs -->
+        <div class="admin-section" style="padding-top:0; display:flex; gap:8px;">
+            <a href="/admin/users?status=active" class="<%= selectedStatus === 'active' ? 'btn-primary' : 'btn-outline' %>">Active</a>
+            <a href="/admin/users?status=banned" class="<%= selectedStatus === 'banned' ? 'btn-primary' : 'btn-outline' %>">Banned</a>
+        </div>
+
+        <div class="admin-section">
+            <h2><%= selectedStatus === 'banned' ? 'Banned Users' : 'Active Users' %></h2>
+
+            <% if (users.length === 0) { %>
+                <p><%= selectedStatus === 'banned' ? 'No users are currently banned.' : 'No active users found.' %></p>
+            <% } %>
+
+            <% users.forEach(function(user) { %>
+                <div class="user-row">
+                    <div>
+                        <div class="user-name"><%= user.name %></div>
+                        <div class="user-email">
+                            <%= user.email %>
+                            <% if (selectedStatus === 'banned') { %>
+                                &middot;
+                                <% if (user.banned_until) { %>
+                                    Banned until <%= new Date(user.banned_until).toLocaleDateString() %>
+                                <% } else { %>
+                                    Banned permanently
+                                <% } %>
+                                <% if (user.ban_reason) { %> &middot; Reason: <%= user.ban_reason %> <% } %>
+                            <% } %>
+                        </div>
+                    </div>
+                    <% if (selectedStatus === 'banned') { %>
+                        <div class="user-actions">
+                            <form action="/admin/users/<%= user.id %>/unban" method="POST">
+                                <button type="submit" class="btn-secondary">Cancel Ban</button>
+                            </form>
+                        </div>
+                    <% } %>
+                </div>
+            <% }); %>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

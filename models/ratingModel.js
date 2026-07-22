@@ -157,16 +157,105 @@ function findByProductAndBuyer(productId, buyerId, callback) {
     });
 }
 
+// Verified reviews received by one seller, shown on their public profile.
+// Anonymous reviews keep their buyer relationship in the database while only
+// exposing a neutral label to the view.
+function getPublicReviewsBySellerId(sellerId, callback) {
+    const sql = `SELECT
+                    r.id,
+                    r.product_id,
+                    r.rating,
+                    r.comment,
+                    r.is_anonymous,
+                    r.created_at,
+                    r.updated_at,
+                    products.name AS product_name,
+                    users.name AS buyer_name
+                 FROM ratings r
+                 JOIN products ON products.id = r.product_id
+                 JOIN users ON users.id = r.buyer_id
+                 WHERE r.seller_id = ?
+                   AND EXISTS (
+                        SELECT 1
+                        FROM purchases p
+                        WHERE p.buyer_id = r.buyer_id
+                          AND p.product_id = r.product_id
+                   )
+                 ORDER BY r.updated_at DESC, r.id DESC`;
+
+    db.query(sql, [sellerId], (error, rows) => {
+        if (error) {
+            return callback(error);
+        }
+
+        callback(null, rows.map((row) => ({
+            id: row.id,
+            productId: row.product_id,
+            productName: row.product_name,
+            rating: Number(row.rating),
+            comment: row.comment,
+            isAnonymous: Boolean(row.is_anonymous),
+            authorLabel: row.is_anonymous ? 'Anonymous student' : row.buyer_name,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at
+        })));
+    });
+}
+
+function runInTransaction(operation, callback) {
+    db.getTransactionConnection((connectionError, connection) => {
+        if (connectionError) {
+            return callback(connectionError);
+        }
+
+        connection.beginTransaction((transactionError) => {
+            if (transactionError) {
+                connection.release();
+                return callback(transactionError);
+            }
+
+            let finished = false;
+            const finish = (error, result) => {
+                if (finished) {
+                    return;
+                }
+                finished = true;
+
+                if (error) {
+                    return connection.rollback(() => {
+                        connection.release();
+                        callback(error);
+                    });
+                }
+
+                connection.commit((commitError) => {
+                    if (commitError) {
+                        return connection.rollback(() => {
+                            connection.release();
+                            callback(commitError);
+                        });
+                    }
+
+                    connection.release();
+                    callback(null, result);
+                });
+            };
+
+            try {
+                operation(connection, finish);
+            } catch (error) {
+                finish(error);
+            }
+        });
+    });
+}
+
 // Create or update a buyer's rating for a product, replacing its media when
 // new files were uploaded or the buyer asked to remove existing media.
 // Returns { ratingId, oldMediaPaths } - oldMediaPaths are the media files
 // that were just replaced, for the caller to delete from disk.
 function upsert({ productId, buyerId, sellerId, rating, comment, isAnonymous, mediaFiles, replaceMedia }, callback) {
-    db.beginTransaction((transactionError) => {
-        if (transactionError) {
-            return callback(transactionError);
-        }
-
+    runInTransaction((connection, finish) => {
         const upsertSql = `INSERT INTO ratings
                                 (product_id, buyer_id, seller_id, rating, comment, is_anonymous)
                             VALUES (?, ?, ?, ?, ?, ?)
@@ -179,55 +268,81 @@ function upsert({ productId, buyerId, sellerId, rating, comment, isAnonymous, me
                                 updated_at = CURRENT_TIMESTAMP`;
         const upsertParams = [productId, buyerId, sellerId, rating, comment, isAnonymous ? 1 : 0];
 
-        db.query(upsertSql, upsertParams, (upsertError, result) => {
+        connection.query(upsertSql, upsertParams, (upsertError, result) => {
             if (upsertError) {
-                return db.rollback(() => callback(upsertError));
+                return finish(upsertError);
             }
 
             const ratingId = result.insertId;
 
             if (!replaceMedia) {
-                return db.commit((commitError) => {
-                    if (commitError) {
-                        return db.rollback(() => callback(commitError));
-                    }
-                    callback(null, { ratingId, oldMediaPaths: [] });
-                });
+                return finish(null, { ratingId, oldMediaPaths: [] });
             }
 
-            db.query('SELECT file_path FROM rating_media WHERE rating_id = ? FOR UPDATE', [ratingId], (selectError, oldMediaRows) => {
+            connection.query('SELECT file_path FROM rating_media WHERE rating_id = ? FOR UPDATE', [ratingId], (selectError, oldMediaRows) => {
                 if (selectError) {
-                    return db.rollback(() => callback(selectError));
+                    return finish(selectError);
                 }
 
                 const oldMediaPaths = oldMediaRows.map((row) => row.file_path);
 
-                db.query('DELETE FROM rating_media WHERE rating_id = ?', [ratingId], (deleteError) => {
+                connection.query('DELETE FROM rating_media WHERE rating_id = ?', [ratingId], (deleteError) => {
                     if (deleteError) {
-                        return db.rollback(() => callback(deleteError));
+                        return finish(deleteError);
                     }
 
-                    insertMediaFiles(ratingId, mediaFiles, (insertError) => {
+                    insertMediaFiles(connection, ratingId, mediaFiles, (insertError) => {
                         if (insertError) {
-                            return db.rollback(() => callback(insertError));
+                            return finish(insertError);
                         }
-
-                        db.commit((commitError) => {
-                            if (commitError) {
-                                return db.rollback(() => callback(commitError));
-                            }
-                            callback(null, { ratingId, oldMediaPaths });
-                        });
+                        finish(null, { ratingId, oldMediaPaths });
                     });
                 });
             });
         });
-    });
+    }, callback);
+}
+
+// Delete only the current buyer's review and return its media paths so the
+// route can remove files after the database transaction commits.
+function deleteByProductAndBuyer(productId, buyerId, callback) {
+    runInTransaction((connection, finish) => {
+        const findSql = `SELECT id
+                         FROM ratings
+                         WHERE product_id = ? AND buyer_id = ?
+                         FOR UPDATE`;
+
+        connection.query(findSql, [productId, buyerId], (findError, ratingRows) => {
+            if (findError) {
+                return finish(findError);
+            }
+            if (!ratingRows.length) {
+                return finish(null, { deleted: false, oldMediaPaths: [] });
+            }
+
+            const ratingId = ratingRows[0].id;
+            connection.query('SELECT file_path FROM rating_media WHERE rating_id = ?', [ratingId], (mediaError, mediaRows) => {
+                if (mediaError) {
+                    return finish(mediaError);
+                }
+
+                connection.query('DELETE FROM ratings WHERE id = ? AND buyer_id = ?', [ratingId, buyerId], (deleteError, result) => {
+                    if (deleteError) {
+                        return finish(deleteError);
+                    }
+                    finish(null, {
+                        deleted: result.affectedRows === 1,
+                        oldMediaPaths: mediaRows.map((row) => row.file_path)
+                    });
+                });
+            });
+        });
+    }, callback);
 }
 
 // Inserts each uploaded media file one at a time, in order, so the whole
 // batch can still be rolled back together on the first failure.
-function insertMediaFiles(ratingId, mediaFiles, callback) {
+function insertMediaFiles(connection, ratingId, mediaFiles, callback) {
     const insertSql = `INSERT INTO rating_media
                             (rating_id, media_type, file_path, original_name, mime_type, size_bytes)
                         VALUES (?, ?, ?, ?, ?, ?)`;
@@ -248,7 +363,7 @@ function insertMediaFiles(ratingId, mediaFiles, callback) {
             file.size
         ];
 
-        db.query(insertSql, params, (error) => {
+        connection.query(insertSql, params, (error) => {
             if (error) {
                 return callback(error);
             }
@@ -263,6 +378,8 @@ module.exports = {
     getSummaryByProductId,
     getSummariesByProductIds,
     getPublicReviewsByProductId,
+    getPublicReviewsBySellerId,
     findByProductAndBuyer,
-    upsert
+    upsert,
+    deleteByProductAndBuyer
 };
