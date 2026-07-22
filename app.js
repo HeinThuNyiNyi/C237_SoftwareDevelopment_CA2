@@ -664,14 +664,13 @@ app.get('/users/:id/reviews', (req, res, next) => {
 // ==================== Ei Htet Htet Tun's routes ====================
 // Reporting products & users, and the admin review process that resolves those reports.
 
-// TODO: replace these with req.session.user.id once the login feature is done.
-const TEMP_REPORTER_ID = 20; // seeded normal user account making the report (Thiha Aung)
+// TODO: replace with req.session.user.id once the admin approve route is updated.
 const TEMP_ADMIN_ID = 18;    // seeded admin account resolving the report (Admin One)
 
 // ---------- Reporting a product ----------
 
 // Show the "report this product" form
-app.get('/user_report/:productId', (req, res) => {
+app.get('/user_report/:productId', isLoggedIn, (req, res) => {
     const productId = req.params.productId;
     productModel.getProductById(productId, (error, results) => {
         if (error) {
@@ -681,13 +680,25 @@ app.get('/user_report/:productId', (req, res) => {
         if (results.length === 0) {
             return res.status(404).send('Product not found');
         }
-        res.render('report/user_report', { product: results[0] });
+
+        const product = results[0];
+        if (Number(product.seller_id) === Number(req.session.user.id)) {
+            req.flash('error', 'You cannot report your own listing.');
+            return res.redirect('/products/' + product.id);
+        }
+
+        res.render('report/user_report', { product });
     });
 });
 
 // Submit a product report
-app.post('/user_report', reportUpload.single('evidenceImage'), (req, res) => {
+app.post('/user_report', isLoggedIn, reportUpload.single('evidenceImage'), (req, res) => {
     const { reported_product_id, reported_user_id, category, description } = req.body;
+
+    if (Number(reported_user_id) === Number(req.session.user.id)) {
+        req.flash('error', 'You cannot report your own listing.');
+        return res.redirect('/products/' + reported_product_id);
+    }
 
     let evidenceImage;
     if (req.file) {
@@ -697,7 +708,7 @@ app.post('/user_report', reportUpload.single('evidenceImage'), (req, res) => {
     }
 
     reportModel.createReport({
-        reporterId: TEMP_REPORTER_ID,
+        reporterId: req.session.user.id,
         reportedUserId: reported_user_id,
         reportedProductId: reported_product_id,
         category: category,
@@ -713,56 +724,11 @@ app.post('/user_report', reportUpload.single('evidenceImage'), (req, res) => {
     });
 });
 
-// ---------- Reporting a user ----------
-
-// Show the "report this user" form
-app.get('/report_user/:userId', (req, res) => {
-    const userId = req.params.userId;
-    userModel.getUserById(userId, (error, results) => {
-        if (error) {
-            console.error('Database query error:', error.message);
-            return res.send('Error retrieving user');
-        }
-        if (results.length === 0) {
-            return res.status(404).send('User not found');
-        }
-        res.render('report/report_user', { reportedUser: results[0] });
-    });
-});
-
-// Submit a user report
-app.post('/report_user', reportUpload.single('evidenceImage'), (req, res) => {
-    const { reported_user_id, category, description } = req.body;
-
-    let evidenceImage;
-    if (req.file) {
-        evidenceImage = req.file.filename;
-    } else {
-        evidenceImage = null;
-    }
-
-    reportModel.createReport({
-        reporterId: TEMP_REPORTER_ID,
-        reportedUserId: reported_user_id,
-        reportedProductId: null,
-        category: category,
-        description: description,
-        evidenceImage: evidenceImage
-    }, (error) => {
-        if (error) {
-            console.error('Error submitting report:', error.message);
-            return res.send('Error submitting report');
-        }
-        req.flash('success', 'Report submitted. Thank you for helping keep CampusCycle safe!');
-        res.redirect('/');
-    });
-});
-
 // ---------- Reporter's own report history ----------
 
 // A user's own submitted reports and their current status
-app.get('/my_reports', (req, res) => {
-    reportModel.getReportsByReporter(TEMP_REPORTER_ID, (error, reports) => {
+app.get('/my_reports', isLoggedIn, (req, res) => {
+    reportModel.getReportsByReporter(req.session.user.id, (error, reports) => {
         if (error) {
             console.error('Database query error:', error.message);
             return res.send('Error retrieving your reports');
@@ -772,11 +738,11 @@ app.get('/my_reports', (req, res) => {
 });
 
 // Show edit form (own pending report only)
-app.get('/my_reports/:id/edit', (req, res) => {
+app.get('/my_reports/:id/edit', isLoggedIn, (req, res) => {
     reportModel.getReportById(req.params.id, (error, results) => {
         if (error || results.length === 0) return res.send('Report not found');
         const report = results[0];
-        if (report.reporter_id !== TEMP_REPORTER_ID || report.status !== 'pending') {
+        if (report.reporter_id !== req.session.user.id || report.status !== 'pending') {
             return res.redirect('/my_reports');
         }
         res.render('report/edit_report', { report: report });
@@ -784,8 +750,8 @@ app.get('/my_reports/:id/edit', (req, res) => {
 });
 
 // Save edit
-app.post('/my_reports/:id/edit', (req, res) => {
-    reportModel.updateReportByReporter(req.params.id, TEMP_REPORTER_ID, req.body.category, req.body.description, (error) => {
+app.post('/my_reports/:id/edit', isLoggedIn, (req, res) => {
+    reportModel.updateReportByReporter(req.params.id, req.session.user.id, req.body.category, req.body.description, (error) => {
         if (error) return res.send('Error updating report');
         req.flash('success', 'Report updated.');
         res.redirect('/my_reports');
@@ -793,8 +759,8 @@ app.post('/my_reports/:id/edit', (req, res) => {
 });
 
 // Delete own report
-app.post('/my_reports/:id/delete', (req, res) => {
-    reportModel.deleteReportByReporter(req.params.id, TEMP_REPORTER_ID, (error) => {
+app.post('/my_reports/:id/delete', isLoggedIn, (req, res) => {
+    reportModel.deleteReportByReporter(req.params.id, req.session.user.id, (error) => {
         if (error) return res.send('Error deleting report');
         req.flash('success', 'Report deleted.');
         res.redirect('/my_reports');
@@ -805,7 +771,7 @@ app.post('/my_reports/:id/delete', (req, res) => {
 
 // List of reports, filterable by status (defaults to the ones still needing review)
 app.get('/admin/admin_report', (req, res) => {
-    const status = req.query.status || 'pending';
+    const status = req.query.status || 'all';
     reportModel.getAllReports(status, (error, reports) => {
         if (error) {
             console.error('Database query error:', error.message);
@@ -902,6 +868,24 @@ app.post('/admin/admin_report/:id/dismiss', (req, res) => {
     });
 });
 
+// ---------- Admin: view active & banned users ----------
+
+app.get('/admin/users', (req, res) => {
+    const status = req.query.status === 'banned' ? 'banned' : 'active';
+    const getUsers = status === 'banned' ? userModel.getBannedUsers : userModel.getActiveUsers;
+
+    getUsers((error, users) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving users');
+        }
+        res.render('admin/users', {
+            users: users,
+            selectedStatus: status
+        });
+    });
+});
+
 // ---------- Admin: lift a ban early ----------
 
 app.post('/admin/users/:id/unban', (req, res) => {
@@ -911,7 +895,7 @@ app.post('/admin/users/:id/unban', (req, res) => {
             return res.send('Error removing ban');
         }
         req.flash('success', 'Ban removed.');
-        res.redirect('/admin/admin_report');
+        res.redirect('/admin/users?status=banned');
     });
 });
 

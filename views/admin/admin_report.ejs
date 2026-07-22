@@ -19,14 +19,6 @@
     <%- include('../partials/adminSidebar') %>
 
     <div class="admin-main">
-        <!-- Status filter tabs -->
-        <div class="admin-section" style="padding-top:0; display:flex; gap:8px;">
-            <a href="/admin/admin_report?status=pending" class="<%= selectedStatus === 'pending' ? 'btn-primary' : 'btn-outline' %>">Pending</a>
-            <a href="/admin/admin_report?status=approved" class="<%= selectedStatus === 'approved' ? 'btn-primary' : 'btn-outline' %>">Approved</a>
-            <a href="/admin/admin_report?status=rejected" class="<%= selectedStatus === 'rejected' ? 'btn-primary' : 'btn-outline' %>">Dismissed</a>
-            <a href="/admin/admin_report?status=all" class="<%= selectedStatus === 'all' ? 'btn-primary' : 'btn-outline' %>">All</a>
-        </div>
-
         <div class="admin-section">
             <h2>Reports</h2>
 

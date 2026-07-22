@@ -77,7 +77,9 @@
 
                 <div class="product-actions-full">
                     <a href="/products/<%= product.id %>" class="btn-outline">View Details</a>
-                    <a href="/user_report/<%= product.id %>" class="btn-report" title="Report this listing">&#9873;</a>
+                    <% if (!currentUser || Number(currentUser.id) !== Number(product.seller_id)) { %>
+                        <a href="/user_report/<%= product.id %>" class="btn-report" title="Report this listing">&#9873;</a>
+                    <% } %>
                 </div>
             </div>
         </div>
