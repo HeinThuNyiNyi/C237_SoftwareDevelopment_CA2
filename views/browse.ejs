@@ -13,45 +13,6 @@
 <% if (success) { %><p class="page-message is-success browse-message"><%= success %></p><% } %>
 <% if (error) { %><p class="page-message is-error browse-message"><%= error %></p><% } %>
 
-<form action="/browse" method="GET" class="filter-panel" aria-label="Filter marketplace listings">
-    <label class="filter-field filter-search">
-        <span>Search</span>
-        <input type="search" name="q" value="<%= search %>" placeholder="Product name" class="reason-input">
-    </label>
-    <label class="filter-field">
-        <span>Category</span>
-        <select name="category" class="ban-select">
-            <option value="">All categories</option>
-            <% categories.forEach(function(category) { %>
-                <option value="<%= category.id %>" <%= String(selectedCategory) === String(category.id) ? 'selected' : '' %>><%= category.name %></option>
-            <% }); %>
-        </select>
-    </label>
-    <label class="filter-field">
-        <span>Minimum rating</span>
-        <select name="minRating" class="ban-select">
-            <option value="">Any rating</option>
-            <% for (let rating = 5; rating >= 1; rating--) { %>
-                <option value="<%= rating %>" <%= Number(selectedMinRating) === rating ? 'selected' : '' %>><%= rating %>&#9733; &amp; up</option>
-            <% } %>
-        </select>
-    </label>
-    <label class="filter-field">
-        <span>Sort by</span>
-        <select name="sort" class="ban-select">
-            <option value="newest" <%= selectedSort === 'newest' ? 'selected' : '' %>>Newest</option>
-            <option value="top_rated" <%= selectedSort === 'top_rated' ? 'selected' : '' %>>Top rated (weighted)</option>
-            <option value="most_reviewed" <%= selectedSort === 'most_reviewed' ? 'selected' : '' %>>Most reviewed</option>
-            <option value="price_low" <%= selectedSort === 'price_low' ? 'selected' : '' %>>Price: low to high</option>
-            <option value="price_high" <%= selectedSort === 'price_high' ? 'selected' : '' %>>Price: high to low</option>
-        </select>
-    </label>
-    <div class="filter-actions">
-        <button type="submit" class="btn-primary">Apply filters</button>
-        <a href="/browse" class="btn-outline">Reset</a>
-    </div>
-</form>
-
 <div class="section-title"><h2><%= products.length %> listing<%= products.length === 1 ? '' : 's' %> found</h2></div>
 
 <div class="product-grid">

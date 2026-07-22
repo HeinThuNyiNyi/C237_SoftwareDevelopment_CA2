@@ -42,13 +42,15 @@
     </div>
 </nav>
 
-<div class="search-bar">
+<% const showAdvancedFilters = typeof selectedMinRating !== 'undefined' && typeof selectedSort !== 'undefined'; %>
+
+<div class="search-bar <%= showAdvancedFilters ? 'search-bar-advanced' : '' %>">
     <a href="/" class="search-bar-home" title="Home">&#8962; Home</a>
 
     <form action="/browse" method="GET" class="search-bar-form">
         <div class="search-bar-input-group">
             <span class="search-bar-icon">&#128269;</span>
-            <input type="text" name="q" placeholder="Search listings..." class="search-bar-input" autocomplete="off">
+            <input type="search" name="q" value="<%= typeof search !== 'undefined' ? search : '' %>" placeholder="Search listings..." class="search-bar-input" autocomplete="off" aria-label="Search listings">
         </div>
 
         <% if (typeof categories !== 'undefined') { %>
@@ -60,7 +62,27 @@
             </select>
         <% } %>
 
-        <button type="submit" class="btn-primary search-bar-submit">Search</button>
+        <% if (showAdvancedFilters) { %>
+            <select name="minRating" class="search-bar-select search-bar-select-compact" aria-label="Minimum rating">
+                <option value="">Any rating</option>
+                <% for (let rating = 5; rating >= 1; rating--) { %>
+                    <option value="<%= rating %>" <%= Number(selectedMinRating) === rating ? 'selected' : '' %>><%= rating %>&#9733; &amp; up</option>
+                <% } %>
+            </select>
+
+            <select name="sort" class="search-bar-select search-bar-select-compact" aria-label="Sort listings">
+                <option value="newest" <%= selectedSort === 'newest' ? 'selected' : '' %>>Newest</option>
+                <option value="top_rated" <%= selectedSort === 'top_rated' ? 'selected' : '' %>>Top rated</option>
+                <option value="most_reviewed" <%= selectedSort === 'most_reviewed' ? 'selected' : '' %>>Most reviewed</option>
+                <option value="price_low" <%= selectedSort === 'price_low' ? 'selected' : '' %>>Price: low to high</option>
+                <option value="price_high" <%= selectedSort === 'price_high' ? 'selected' : '' %>>Price: high to low</option>
+            </select>
+        <% } %>
+
+        <button type="submit" class="btn-primary search-bar-submit"><%= showAdvancedFilters ? 'Apply filters' : 'Search' %></button>
+        <% if (showAdvancedFilters) { %>
+            <a href="/browse" class="btn-outline search-bar-reset">Reset</a>
+        <% } %>
     </form>
 </div>
 <p class="search-bar-subtext">Find what you need from fellow students.</p>
