@@ -15,12 +15,26 @@ function isLoggedIn(req, res, next) {
 
 // Blocks anyone who is not an admin. Checks the role stored in the
 // session at login time, so a normal user cannot reach /admin pages.
+//
+// The two failure cases are treated differently on purpose. Sending a
+// logged-out admin to "/" was confusing, because "/" redirects to
+// /browse - so a session that had quietly expired looked like the admin
+// link had dumped them on the products page with no explanation.
 function isAdmin(req, res, next) {
-    if (req.session.user && req.session.user.role === 'admin') {
-        return next();
+    // Not logged in at all, most often an expired session. Send them to
+    // the login page so they can get straight back in.
+    if (!req.session.user) {
+        req.flash('error', 'Your session has ended. Please log in again to open the admin pages.');
+        return res.redirect('/login');
     }
-    req.flash('error', 'You do not have permission to view that page.');
-    res.redirect('/');
+
+    // Logged in, but as a student. They stay on the site, with a reason.
+    if (req.session.user.role !== 'admin') {
+        req.flash('error', 'You do not have permission to view that page.');
+        return res.redirect('/');
+    }
+
+    next();
 }
 
 // Sends an already-logged-in person away from the login page instead of
