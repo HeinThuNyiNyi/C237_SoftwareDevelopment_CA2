@@ -821,11 +821,13 @@ app.get('/history', isLoggedIn, (req, res) => {
 
 // ==================== Ratings - Feng Kaiduo ====================
 app.get('/reservations/:id/rating', isLoggedIn, (req, res) => {
-    const sql = `SELECT r.id, r.product_id, r.seller_id, p.name AS product_name, ra.id AS rating_id
+    const sql = `SELECT r.id, r.product_id, r.seller_id, r.rating_admin_delete_count,
+                        p.name AS product_name, ra.id AS rating_id
                  FROM reservations r
                  JOIN products p ON p.id = r.product_id
                  LEFT JOIN ratings ra ON ra.reservation_id = r.id
-                 WHERE r.id = ? AND r.buyer_id = ? AND r.status = 'completed'`;
+                 WHERE r.id = ? AND r.buyer_id = ? AND r.status = 'completed'
+                       AND r.rating_admin_delete_count < 2`;
     db.query(sql, [req.params.id, req.session.user.id], (error, reservations) => {
         if (error) return handleDatabaseError(res, 'Rating form', error);
         if (reservations.length === 0 || reservations[0].rating_id) {
@@ -848,9 +850,10 @@ app.post('/reservations/:id/rating', isLoggedIn, upload.single('ratingImage'), (
     }
     const sql = `INSERT INTO ratings
         (reservation_id, product_id, buyer_id, seller_id, rating, comment, image)
-        SELECT id, product_id, buyer_id, seller_id, ?, ?, ?
-        FROM reservations
-        WHERE id = ? AND buyer_id = ? AND status = 'completed'`;
+         SELECT id, product_id, buyer_id, seller_id, ?, ?, ?
+         FROM reservations
+         WHERE id = ? AND buyer_id = ? AND status = 'completed'
+               AND rating_admin_delete_count < 2`;
     const image = req.file ? req.file.filename : null;
     db.query(sql, [ratingValue, (req.body.comment || '').trim(), image, req.params.id, req.session.user.id], (error, result) => {
         if (error) {
@@ -930,6 +933,92 @@ app.post('/ratings/:id/delete', isLoggedIn, (req, res) => {
             );
         }
     );
+});
+
+app.post('/admin/ratings/:id/delete', isAdmin, (req, res) => {
+    db.beginTransaction((transactionError) => {
+        if (transactionError) return handleDatabaseError(res, 'Start rating moderation', transactionError);
+
+        const selectSql = `SELECT ra.id, ra.reservation_id, ra.buyer_id, ra.product_id, ra.image,
+                                  r.rating_admin_delete_count
+                           FROM ratings ra
+                           JOIN reservations r ON r.id = ra.reservation_id
+                           WHERE ra.id = ?
+                           FOR UPDATE`;
+        db.query(selectSql, [req.params.id], (selectError, ratings) => {
+            if (selectError) {
+                return db.rollback(() => handleDatabaseError(res, 'Find rating for moderation', selectError));
+            }
+            if (ratings.length === 0) {
+                return db.rollback(() => {
+                    req.flash('error', 'Rating was already deleted or could not be found.');
+                    res.redirect(req.get('referer') || '/');
+                });
+            }
+
+            const rating = ratings[0];
+            db.query('DELETE FROM ratings WHERE id = ?', [rating.id], (deleteError, deleteResult) => {
+                if (deleteError) {
+                    return db.rollback(() => handleDatabaseError(res, 'Delete moderated rating', deleteError));
+                }
+                if (deleteResult.affectedRows === 0) {
+                    return db.rollback(() => {
+                        req.flash('error', 'Rating was already deleted or could not be found.');
+                        res.redirect('/products/' + rating.product_id);
+                    });
+                }
+
+                const countSql = `UPDATE reservations
+                                  SET rating_admin_delete_count = rating_admin_delete_count + 1
+                                  WHERE id = ?`;
+                db.query(countSql, [rating.reservation_id], (countError) => {
+                    if (countError) {
+                        return db.rollback(() => handleDatabaseError(res, 'Record rating moderation', countError));
+                    }
+
+                    const newDeleteCount = Number(rating.rating_admin_delete_count) + 1;
+                    function finishModeration(message) {
+                        db.commit((commitError) => {
+                            if (commitError) {
+                                return db.rollback(() => handleDatabaseError(res, 'Save rating moderation', commitError));
+                            }
+                            deleteUploadedFile(rating.image);
+                            req.flash('success', message);
+                            res.redirect('/products/' + rating.product_id);
+                        });
+                    }
+
+                    if (newDeleteCount < 2) {
+                        return finishModeration('Rating deleted. The buyer may submit one replacement rating.');
+                    }
+
+                    const banReason = 'Account banned after a replacement rating was removed by an administrator.';
+                    db.query(
+                        `UPDATE users SET is_banned = 1, ban_reason = ?
+                         WHERE id = ? AND role = 'user'`,
+                        [banReason, rating.buyer_id],
+                        (banError) => {
+                            if (banError) {
+                                return db.rollback(() => handleDatabaseError(res, 'Ban rating author', banError));
+                            }
+                            db.query(
+                                `UPDATE products SET status = 'rejected',
+                                 rejection_reason = 'Seller was banned after repeated rating moderation'
+                                 WHERE seller_id = ?`,
+                                [rating.buyer_id],
+                                (productError) => {
+                                    if (productError) {
+                                        return db.rollback(() => handleDatabaseError(res, 'Remove banned buyer products', productError));
+                                    }
+                                    finishModeration('Replacement rating deleted. The buyer was banned and their products were removed.');
+                                }
+                            );
+                        }
+                    );
+                });
+            });
+        });
+    });
 });
 
 // ==================== Reports and resolution messages - Ei Htet Htet Tun ====================

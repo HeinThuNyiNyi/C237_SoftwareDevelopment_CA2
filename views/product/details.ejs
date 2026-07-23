@@ -57,6 +57,14 @@
         <div class="card mb-3"><div class="card-body">
             <strong><%= review.buyer_name %></strong>
             <span class="text-warning ms-2"><%= '★'.repeat(review.rating) %></span>
+            <% if (currentUser && currentUser.role === 'admin') { %>
+                <form class="d-inline ms-2" method="POST" action="/admin/ratings/<%= review.id %>/delete">
+                    <button class="btn btn-sm btn-outline-danger" type="submit"
+                            onclick="return confirm('Delete this rating? The buyer may be warned or banned for repeated removals.')">
+                        Delete
+                    </button>
+                </form>
+            <% } %>
             <p class="mb-0 mt-2"><%= review.comment || 'No written comment.' %></p>
             <% if (review.image) { %>
                 <img class="rating-image img-fluid rounded border mt-3"

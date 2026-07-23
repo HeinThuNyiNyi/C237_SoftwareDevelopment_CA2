@@ -65,3 +65,13 @@ Register a second student account to test buyer/seller transactions.
 Completed reservations provide purchase and sales history. Resolved reports provide user-facing updates, so separate purchase and notification tables are not required.
 
 The private `.env`, `node_modules` and uploaded user files are excluded from Git.
+
+## Existing database update
+
+If the database was imported before administrator rating moderation was added, run this statement once:
+
+```sql
+ALTER TABLE reservations
+ADD COLUMN rating_admin_delete_count INT NOT NULL DEFAULT 0
+AFTER stock_restored;
+```

@@ -10,6 +10,12 @@
           <h1 class="h3 mb-2"><%= rating ? 'Edit Rating' : 'Give Rating' %></h1>
           <p class="text-muted">Completed purchase: <%= reservation.product_name %></p>
 
+          <% if (!rating && Number(reservation.rating_admin_delete_count) === 1) { %>
+            <div class="alert alert-warning" role="alert">
+              An administrator removed your previous rating. If this replacement rating is removed again, your account will be banned.
+            </div>
+          <% } %>
+
           <form method="POST" action="<%= formAction %>" enctype="multipart/form-data">
             <div class="mb-3">
               <label for="rating" class="form-label">Rating</label>

@@ -67,6 +67,7 @@ CREATE TABLE reservations (
     meeting_location VARCHAR(255),
     status ENUM('requested', 'proposed', 'confirmed', 'completed', 'cancelled', 'rejected') NOT NULL DEFAULT 'requested',
     stock_restored TINYINT(1) NOT NULL DEFAULT 0,
+    rating_admin_delete_count INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     completed_at TIMESTAMP NULL,

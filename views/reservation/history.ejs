@@ -17,8 +17,10 @@
                         <td>$<%= Number(item.total_price).toFixed(2) %></td>
                         <td><%= new Date(item.completed_at).toLocaleDateString() %></td>
                         <td>
-                            <% if (currentUser.id === item.buyer_id && !item.rating_id) { %>
+                            <% if (currentUser.id === item.buyer_id && !item.rating_id && Number(item.rating_admin_delete_count) < 2) { %>
                                 <a class="btn btn-sm btn-warning" href="/reservations/<%= item.id %>/rating">Rate Purchase</a>
+                            <% } else if (currentUser.id === item.buyer_id && !item.rating_id) { %>
+                                <span class="text-danger">Rating disabled</span>
                             <% } else if (currentUser.id === item.buyer_id) { %>
                                 <span class="me-2"><%= item.rating_value %>/5</span>
                                 <a class="btn btn-sm btn-outline-primary" href="/ratings/<%= item.rating_id %>/edit">Edit</a>
