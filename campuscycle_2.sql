@@ -1,7 +1,6 @@
 -- CampusCycle_2
 -- Select an empty MySQL database before running this file.
 -- The script intentionally contains exactly seven application tables.
-USE campuscycle_2;
 
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
