@@ -1,4 +1,4 @@
-# CampusCycle_2
+# CampusCycle
 
 A lesson-aligned C237 CA2 marketplace built with one `app.js`, EJS, Bootstrap, Express and MySQL.
 
