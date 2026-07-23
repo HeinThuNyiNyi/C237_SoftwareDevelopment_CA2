@@ -1,0 +1,68 @@
+<%- include('../partials/head', { title: product.name }) %>
+<%- include('../partials/navbar') %>
+<main class="container py-4 page-shell">
+    <%- include('../partials/messages') %>
+    <%- include('../partials/back-button', { backUrl: '/' }) %>
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <% if (product.image) { %>
+                <img class="detail-image rounded shadow-sm" src="/uploads/<%= product.image %>" alt="<%= product.name %>">
+            <% } else { %>
+                <div class="product-placeholder rounded">♻</div>
+            <% } %>
+        </div>
+        <div class="col-lg-7">
+            <span class="badge text-bg-success"><%= product.status %></span>
+            <h1 class="mt-2"><%= product.name %></h1>
+            <p class="text-secondary"><%= product.category %> · <%= product.item_condition.replace('_', ' ') %></p>
+            <p><%= product.description %></p>
+            <p class="h3 text-success">$<%= Number(product.price).toFixed(2) %></p>
+            <p>Quantity available: <strong><%= product.quantity %></strong></p>
+            <p>Seller: <a href="/users/<%= product.seller_id %>"><%= product.seller_name %></a></p>
+            <p>★ <%= Number(product.average_rating).toFixed(1) %> from <%= product.review_count %> review(s)</p>
+
+            <% if (currentUser && currentUser.id !== product.seller_id && product.status === 'approved') { %>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-4">
+                        <form method="POST" action="/wishlist/add/<%= product.id %>">
+                            <button class="btn btn-outline-danger w-100">Add to Wishlist</button>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <form class="d-flex gap-2" method="POST" action="/cart/add/<%= product.id %>">
+                            <input class="form-control" type="number" name="quantity" min="1" max="<%= product.quantity %>" value="1">
+                            <button class="btn btn-outline-success">Cart</button>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <form class="d-flex gap-2" method="POST" action="/reservations/create/<%= product.id %>">
+                            <input class="form-control" type="number" name="quantity" min="1" max="<%= product.quantity %>" value="1">
+                            <button class="btn btn-success">Reserve</button>
+                        </form>
+                    </div>
+                </div>
+                <a class="btn btn-outline-danger" href="/reports/product/<%= product.id %>">Report Product</a>
+            <% } else if (!currentUser) { %>
+                <a class="btn btn-success" href="/login">Log in to reserve</a>
+            <% } %>
+        </div>
+    </div>
+
+    <hr class="my-5">
+    <h2 class="h4">Verified buyer reviews</h2>
+    <% if (reviews.length === 0) { %>
+        <p class="text-secondary">No reviews yet.</p>
+    <% } %>
+    <% reviews.forEach(function(review) { %>
+        <div class="card mb-3"><div class="card-body">
+            <strong><%= review.buyer_name %></strong>
+            <span class="text-warning ms-2"><%= '★'.repeat(review.rating) %></span>
+            <p class="mb-0 mt-2"><%= review.comment || 'No written comment.' %></p>
+            <% if (review.image) { %>
+                <img class="rating-image img-fluid rounded border mt-3"
+                     src="/uploads/<%= review.image %>" alt="Review image from <%= review.buyer_name %>">
+            <% } %>
+        </div></div>
+    <% }); %>
+</main>
+<%- include('../partials/footer') %>

@@ -1,0 +1,26 @@
+<%- include('partials/head', { title: profileUser.name }) %>
+<%- include('partials/navbar') %>
+<main class="container py-4 page-shell">
+    <%- include('partials/messages') %>
+    <%- include('partials/back-button', { backUrl: '/' }) %>
+    <div class="card shadow-sm mb-4"><div class="card-body">
+        <h1 class="h3"><%= profileUser.name %></h1>
+        <p class="text-secondary">CampusCycle member since <%= new Date(profileUser.created_at).toLocaleDateString() %></p>
+        <% if (currentUser && currentUser.id !== profileUser.id) { %>
+            <a class="btn btn-outline-danger" href="/reports/user/<%= profileUser.id %>">Report User</a>
+        <% } %>
+    </div></div>
+    <h2 class="h4">Approved products</h2>
+    <div class="row g-3">
+        <% products.forEach(function(product) { %>
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100"><div class="card-body">
+                    <h3 class="h5"><%= product.name %></h3>
+                    <p>$<%= Number(product.price).toFixed(2) %></p>
+                    <a class="btn btn-outline-success" href="/products/<%= product.id %>">View</a>
+                </div></div>
+            </div>
+        <% }); %>
+    </div>
+</main>
+<%- include('partials/footer') %>

@@ -1,70 +1,40 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CampusCycle Admin</title>
-<link rel="stylesheet" href="/css/style.css">
-</head>
-<body class="admin-body">
+<%- include('../partials/head', { title: 'Admin Dashboard' }) %>
+<%- include('../partials/navbar') %>
 
-<%- include('../partials/adminNavbar') %>
+<main class="container py-4">
+  <%- include('../partials/messages') %>
+  <%- include('../partials/back-button', { backUrl: '/' }) %>
+  <h1 class="h2 mb-4">Admin Dashboard</h1>
 
-<div class="admin-layout">
-    <%- include('../partials/adminSidebar') %>
-
-    <div class="admin-main">
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-value"><%= pendingProducts.length %></div>
-                <div class="stat-label">Pending Posts</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value"><%= totalUsers %></div>
-                <div class="stat-label">Total Users</div>
-            </div>
-            <a href="/admin/reports" class="stat-card">
-                <div class="stat-value"><%= openReportsCount %></div>
-                <div class="stat-label">Open Reports</div>
-            </a>
-            <div class="stat-card">
-                <div class="stat-value"><%= activeReservationsCount %></div>
-                <div class="stat-label">Active Reservations</div>
-            </div>
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <p class="text-muted mb-1">Pending products</p>
+          <p class="display-5 fw-bold text-success"><%= counts.pending_products %></p>
+          <a class="btn btn-outline-success" href="/admin/products">Review products</a>
         </div>
-
-        <!-- Pending product posts: approve / reject with stored reason -->
-        <div class="admin-section">
-            <h2>Pending Product Posts</h2>
-
-            <% if (pendingProducts.length === 0) { %>
-                <p>No pending posts right now.</p>
-            <% } %>
-
-            <% pendingProducts.forEach(function(product) { %>
-                <div class="review-card">
-                    <div class="review-thumb">
-                        <img src="/images/products/<%= product.image %>" alt="<%= product.name %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
-                    </div>
-                    <div class="review-body">
-                        <h4><%= product.name %></h4>
-                        <p class="review-meta">Seller: <%= product.sellerName %> &middot; Category: <%= product.categoryName %> &middot; $<%= Number(product.price).toFixed(2) %></p>
-                        <p class="review-meta">Submitted: <%= new Date(product.created_at).toLocaleDateString() %></p>
-                    </div>
-                    <div class="review-actions">
-                        <form action="/admin/products/<%= product.id %>/approve" method="POST">
-                            <button type="submit" class="btn-primary">Approve Post</button>
-                        </form>
-                        <form action="/admin/products/<%= product.id %>/reject" method="POST">
-                            <input type="text" name="reason" class="reason-input" placeholder="Reason for rejection">
-                            <button type="submit" class="btn-outline">Reject Post</button>
-                        </form>
-                    </div>
-                </div>
-            <% }); %>
-        </div>
+      </div>
     </div>
-</div>
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <p class="text-muted mb-1">Pending reports</p>
+          <p class="display-5 fw-bold text-danger"><%= counts.pending_reports %></p>
+          <a class="btn btn-outline-danger" href="/admin/reports">Review reports</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <p class="text-muted mb-1">Registered users</p>
+          <p class="display-5 fw-bold"><%= counts.users %></p>
+          <a class="btn btn-outline-dark" href="/admin/users">Manage users</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
 
-</body>
-</html>
+<%- include('../partials/footer') %>

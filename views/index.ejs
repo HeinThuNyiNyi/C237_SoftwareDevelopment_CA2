@@ -1,0 +1,69 @@
+<%- include('partials/head', { title: 'Browse' }) %>
+<%- include('partials/navbar') %>
+
+<main class="container py-4 page-shell">
+    <%- include('partials/messages') %>
+
+    <div class="row align-items-center mb-4">
+        <div class="col-lg-5">
+            <h1 class="h2">Campus marketplace</h1>
+            <p class="text-secondary mb-0">Find useful items from fellow RP students.</p>
+        </div>
+        <div class="col-lg-7 mt-3 mt-lg-0">
+            <form class="row g-2" method="GET" action="/">
+                <div class="col-md-4">
+                    <input class="form-control" name="search" value="<%= search %>" placeholder="Search products">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="category">
+                        <option value="">All categories</option>
+                        <% categories.forEach(function(item) { %>
+                            <option value="<%= item.category %>" <%= category === item.category ? 'selected' : '' %>>
+                                <%= item.category %>
+                            </option>
+                        <% }); %>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="sort">
+                        <option value="newest" <%= sort === 'newest' ? 'selected' : '' %>>Newest</option>
+                        <option value="price_low" <%= sort === 'price_low' ? 'selected' : '' %>>Price: low to high</option>
+                        <option value="price_high" <%= sort === 'price_high' ? 'selected' : '' %>>Price: high to low</option>
+                        <option value="rating" <%= sort === 'rating' ? 'selected' : '' %>>Highest rated</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-grid"><button class="btn btn-success">Search</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <% if (products.length === 0) { %>
+            <div class="col-12"><div class="alert alert-info">No matching products found.</div></div>
+        <% } %>
+        <% products.forEach(function(product) { %>
+            <div class="col-sm-6 col-lg-4">
+                <div class="card h-100 shadow-sm">
+                    <% if (product.image) { %>
+                        <img class="card-img-top product-image" src="/uploads/<%= product.image %>" alt="<%= product.name %>">
+                    <% } else { %>
+                        <div class="product-placeholder">♻</div>
+                    <% } %>
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between">
+                            <span class="badge text-bg-success"><%= product.category %></span>
+                            <span class="badge text-bg-light"><%= product.item_condition.replace('_', ' ') %></span>
+                        </div>
+                        <h2 class="h5 mt-3"><%= product.name %></h2>
+                        <p class="text-secondary mb-1">Seller: <%= product.seller_name %></p>
+                        <p class="mb-1">★ <%= Number(product.average_rating).toFixed(1) %> (<%= product.review_count %>)</p>
+                        <p class="fs-5 fw-bold text-success">$<%= Number(product.price).toFixed(2) %></p>
+                        <a class="btn btn-outline-success mt-auto" href="/products/<%= product.id %>">View Details</a>
+                    </div>
+                </div>
+            </div>
+        <% }); %>
+    </div>
+</main>
+
+<%- include('partials/footer') %>

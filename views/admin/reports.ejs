@@ -1,0 +1,70 @@
+<%- include('../partials/head', { title: 'Report Management' }) %>
+<%- include('../partials/navbar') %>
+
+<main class="container py-4">
+  <%- include('../partials/messages') %>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h2 mb-1">Report Management</h1>
+      <p class="text-muted mb-0">Resolve reports and send a resolution message to the reporter.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="/admin">Dashboard</a>
+  </div>
+
+  <% if (!reports.length) { %>
+    <div class="alert alert-info">There are no reports.</div>
+  <% } else { %>
+    <div class="accordion" id="reportsAccordion">
+      <% reports.forEach(function(item, index) { %>
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button <%= index ? 'collapsed' : '' %>" type="button" data-bs-toggle="collapse" data-bs-target="#report<%= item.id %>">
+              #<%= item.id %> — <%= item.category %> — <%= item.status %>
+            </button>
+          </h2>
+          <div id="report<%= item.id %>" class="accordion-collapse collapse <%= index ? '' : 'show' %>" data-bs-parent="#reportsAccordion">
+            <div class="accordion-body">
+              <dl class="row">
+                <dt class="col-sm-3">Reporter</dt>
+                <dd class="col-sm-9"><%= item.reporter_name %></dd>
+                <dt class="col-sm-3">Reported target</dt>
+                <dd class="col-sm-9"><%= item.reported_product_name ? 'Product: ' + item.reported_product_name : 'User: ' + (item.reported_user_name || 'Unavailable') %></dd>
+                <dt class="col-sm-3">Description</dt>
+                <dd class="col-sm-9"><%= item.description %></dd>
+                <dt class="col-sm-3">Current resolution</dt>
+                <dd class="col-sm-9"><%= item.resolution_message || 'Not resolved yet.' %></dd>
+              </dl>
+
+              <% if (item.status === 'pending') { %>
+                <form method="POST" action="/admin/reports/<%= item.id %>/resolve">
+                  <div class="mb-3">
+                    <label class="form-label" for="decision<%= item.id %>">Decision</label>
+                    <select class="form-select" id="decision<%= item.id %>" name="decision" required>
+                      <option value="approved">Approve report</option>
+                      <option value="dismissed">Dismiss report</option>
+                    </select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label" for="action<%= item.id %>">Administrator action</label>
+                    <select class="form-select" id="action<%= item.id %>" name="action" required>
+                      <option value="none">No account or product action</option>
+                      <option value="remove_product">Remove product only</option>
+                      <option value="ban_and_remove">Ban user and remove product</option>
+                    </select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label" for="resolution<%= item.id %>">Resolution message</label>
+                    <textarea class="form-control" id="resolution<%= item.id %>" name="resolutionMessage" rows="3" required></textarea>
+                  </div>
+                  <button class="btn btn-primary" type="submit">Resolve Report</button>
+                </form>
+              <% } %>
+            </div>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</main>
+
+<%- include('../partials/footer') %>

@@ -1,114 +1,35 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sign Up &mdash; CampusCycle</title>
-<link rel="stylesheet" href="/css/style.css">
-</head>
-<body class="auth-body">
-
-<div class="auth-split">
-
-    <!-- Left: branding panel, same as the login page -->
-    <div class="auth-brand-panel">
-        <div class="auth-brand">
-            <div class="brand-icon">&#9851;</div>
-            <span class="campus-light">Campus</span><span class="cycle-light">Cycle</span>
-        </div>
-
-        <h1 class="auth-tagline">Join the <span class="auth-highlight">campus marketplace</span></h1>
-        <p class="auth-subtagline">Open to Republic Polytechnic students only.</p>
-
-        <ul class="auth-points">
-            <li><span class="auth-tick">&#10003;</span> Sign up with your RP school email</li>
-            <li><span class="auth-tick">&#10003;</span> Your RP student ID is your login</li>
-            <li><span class="auth-tick">&#10003;</span> Start buying and selling straight away</li>
-        </ul>
-
-        <p class="auth-foot-note">&copy; 2026 CampusCycle &mdash; Buy less. Reuse more.</p>
-    </div>
-
-    <!-- Right: sign-up form -->
-    <div class="auth-form-panel">
-        <div class="auth-form-box">
-
-            <h2 class="auth-title">Create your account</h2>
-            <p class="auth-sub">Only Republic Polytechnic students can register. You can log in as soon as your account is created.</p>
-
-            <% if (errors && errors.length > 0) { %>
-                <div class="auth-alert auth-alert-error">
-                    <% errors.forEach(function(message) { %><p><%= message %></p><% }); %>
+<%- include('../partials/head', { title: 'Sign Up' }) %>
+<%- include('../partials/navbar') %>
+<main class="container py-5 page-shell">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+            <%- include('../partials/messages') %>
+            <%- include('../partials/back-button', { backUrl: '/' }) %>
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h1 class="h3 mb-4">Student registration</h1>
+                    <form method="POST" action="/register">
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input class="form-control" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">RP email</label>
+                            <input class="form-control" type="email" name="email" placeholder="name@myrp.edu.sg" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone</label>
+                            <input class="form-control" name="phone">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input class="form-control" type="password" name="password" minlength="6" required>
+                        </div>
+                        <button class="btn btn-success w-100">Create Account</button>
+                    </form>
                 </div>
-            <% } %>
-
-            <form action="/register" method="POST" novalidate>
-
-                <label class="auth-label" for="name">Full Name</label>
-                <input type="text" id="name" name="name" class="auth-input"
-                       placeholder="e.g. Hein Thu Nyi Nyi"
-                       value="<%= old.name || '' %>" maxlength="100" required>
-                <div class="auth-gap"></div>
-
-                <label class="auth-label" for="username">Student ID</label>
-                <!-- Only the part before the @ is typed. The domain is fixed
-                     here and again on the server, so a non-RP address cannot
-                     be submitted. -->
-                <div class="auth-email-group">
-                    <input type="text" id="username" name="username" class="auth-input auth-email-input"
-                           placeholder="25028720"
-                           value="<%= old.username || '' %>" maxlength="80" required>
-                    <span class="auth-email-suffix">@myrp.edu.sg</span>
-                </div>
-                <p class="auth-hint">Enter your RP student ID only &mdash; the school domain is added for you.</p>
-
-                <label class="auth-label" for="phone">Contact Number <span class="auth-optional">(optional)</span></label>
-                <input type="text" id="phone" name="phone" class="auth-input"
-                       placeholder="e.g. 91234567"
-                       value="<%= old.phone || '' %>" maxlength="20">
-                <div class="auth-gap"></div>
-
-                <label class="auth-label" for="password">Password</label>
-                <div class="auth-password-wrap">
-                    <input type="password" id="password" name="password" class="auth-input"
-                           placeholder="At least 8 characters" required>
-                    <button type="button" class="auth-toggle" data-target="password">Show</button>
-                </div>
-
-                <label class="auth-label" for="confirmPassword">Confirm Password</label>
-                <div class="auth-password-wrap">
-                    <input type="password" id="confirmPassword" name="confirmPassword" class="auth-input"
-                           placeholder="Type your password again" required>
-                    <button type="button" class="auth-toggle" data-target="confirmPassword">Show</button>
-                </div>
-
-                <button type="submit" class="auth-submit">Submit Sign-Up</button>
-            </form>
-
-            <p class="auth-note">
-                Already have an account? <a href="/login" class="auth-link">Log in</a>
-            </p>
-
+            </div>
         </div>
     </div>
-
-</div>
-
-<script>
-// Show / hide for both password boxes.
-document.querySelectorAll('.auth-toggle').forEach(function (button) {
-    button.addEventListener('click', function () {
-        var field = document.getElementById(this.dataset.target);
-        if (field.type === 'password') {
-            field.type = 'text';
-            this.textContent = 'Hide';
-        } else {
-            field.type = 'password';
-            this.textContent = 'Show';
-        }
-    });
-});
-</script>
-
-</body>
-</html>
+</main>
+<%- include('../partials/footer') %>

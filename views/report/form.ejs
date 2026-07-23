@@ -1,0 +1,59 @@
+<%- include('../partials/head', { title: report ? 'Edit Report' : 'Submit Report' }) %>
+<%- include('../partials/navbar') %>
+
+<main class="container py-4">
+  <%- include('../partials/messages') %>
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <div class="card shadow-sm">
+        <div class="card-body p-4">
+          <h1 class="h3 mb-3"><%= report ? 'Edit Report' : 'Submit Report' %></h1>
+
+          <% if (!report && targetType === 'product') { %>
+            <div class="alert alert-light border">
+              Reporting product: <strong><%= target.name %></strong>
+            </div>
+          <% } %>
+
+          <% if (!report && targetType === 'user') { %>
+            <div class="alert alert-light border">
+              Reporting user: <strong><%= target.name %></strong>
+            </div>
+          <% } %>
+
+          <form method="POST" action="<%= formAction %>" <%- !report ? 'enctype="multipart/form-data"' : '' %>>
+            <div class="mb-3">
+              <label for="category" class="form-label">Category</label>
+              <select class="form-select" id="category" name="category" required>
+                <option value="">Choose a reason</option>
+                <% ['Misleading information', 'Prohibited item', 'Scam or fraud', 'Abusive behaviour', 'Other'].forEach(function(option) { %>
+                  <option value="<%= option %>" <%= report && report.category === option ? 'selected' : '' %>><%= option %></option>
+                <% }) %>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="description" class="form-label">Description</label>
+              <textarea class="form-control" id="description" name="description" rows="5" maxlength="1000" required><%= report ? report.description : '' %></textarea>
+              <div class="form-text">Explain what happened clearly so an administrator can review it.</div>
+            </div>
+
+            <% if (!report) { %>
+              <div class="mb-3">
+                <label for="evidenceImage" class="form-label">Evidence image (optional)</label>
+                <input class="form-control" id="evidenceImage" name="evidenceImage" type="file" accept="image/*">
+              </div>
+            <% } %>
+
+            <div class="d-flex gap-2">
+              <button class="btn btn-danger" type="submit"><%= report ? 'Save Changes' : 'Submit Report' %></button>
+              <a class="btn btn-outline-secondary" href="<%= report ? '/my-reports' : (targetType === 'product' ? '/products/' + target.id : '/users/' + target.id) %>">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<%- include('../partials/footer') %>

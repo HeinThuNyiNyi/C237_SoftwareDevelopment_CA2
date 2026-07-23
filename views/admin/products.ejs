@@ -1,0 +1,74 @@
+<%- include('../partials/head', { title: 'Product Approval' }) %>
+<%- include('../partials/navbar') %>
+
+<main class="container py-4">
+  <%- include('../partials/messages') %>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h2 mb-1">Product Approval</h1>
+      <p class="text-muted mb-0">Approve or reject seller submissions.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="/admin">Dashboard</a>
+  </div>
+
+  <% if (!products.length) { %>
+    <div class="alert alert-info">There are no products to review.</div>
+  <% } else { %>
+    <div class="table-responsive bg-white border rounded shadow-sm">
+      <table class="table align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Product</th>
+            <th>Seller</th>
+            <th>Price</th>
+            <th>Status</th>
+            <th>Reason</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% products.forEach(function(product) { %>
+            <tr>
+              <td><a href="/products/<%= product.id %>"><%= product.name %></a></td>
+              <td><%= product.seller_name %></td>
+              <td>$<%= Number(product.price).toFixed(2) %></td>
+              <td><span class="badge text-bg-<%= product.status === 'approved' ? 'success' : product.status === 'rejected' ? 'danger' : 'warning' %>"><%= product.status %></span></td>
+              <td><%= product.rejection_reason || '—' %></td>
+              <td class="text-end">
+                <form class="d-inline" method="POST" action="/admin/products/<%= product.id %>/approve">
+                  <button class="btn btn-sm btn-success" type="submit">Approve</button>
+                </form>
+                <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#rejectProduct<%= product.id %>">Reject</button>
+              </td>
+            </tr>
+
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% products.forEach(function(product) { %>
+      <div class="modal fade" id="rejectProduct<%= product.id %>" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <form method="POST" action="/admin/products/<%= product.id %>/reject">
+              <div class="modal-header">
+                <h2 class="modal-title fs-5">Reject <%= product.name %></h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <label class="form-label" for="reason<%= product.id %>">Reason</label>
+                <textarea class="form-control" id="reason<%= product.id %>" name="reason" rows="3" required></textarea>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-danger" type="submit">Reject Product</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    <% }) %>
+  <% } %>
+</main>
+
+<%- include('../partials/footer') %>

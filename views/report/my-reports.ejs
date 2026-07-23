@@ -1,0 +1,61 @@
+<%- include('../partials/head', { title: 'My Reports' }) %>
+<%- include('../partials/navbar') %>
+
+<main class="container py-4">
+  <%- include('../partials/messages') %>
+  <%- include('../partials/back-button', { backUrl: '/' }) %>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h2 mb-1">My Reports</h1>
+      <p class="text-muted mb-0">Track reports and administrator resolution messages.</p>
+    </div>
+  </div>
+
+  <% if (!reports.length) { %>
+    <div class="alert alert-info">You have not submitted any reports.</div>
+  <% } else { %>
+    <div class="table-responsive bg-white border rounded shadow-sm">
+      <table class="table align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Target</th>
+            <th>Category</th>
+            <th>Status</th>
+            <th>Resolution</th>
+            <th>Date</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% reports.forEach(function(item) { %>
+            <tr>
+              <td>
+                <% if (item.reported_product_name) { %>
+                  Product: <%= item.reported_product_name %>
+                <% } else { %>
+                  User: <%= item.reported_user_name || 'Unavailable user' %>
+                <% } %>
+              </td>
+              <td><%= item.category %></td>
+              <td><span class="badge text-bg-<%= item.status === 'pending' ? 'warning' : item.status === 'approved' ? 'danger' : 'secondary' %>"><%= item.status %></span></td>
+              <td><%= item.resolution_message || 'Awaiting administrator review.' %></td>
+              <td><%= new Date(item.created_at).toLocaleDateString('en-SG') %></td>
+              <td class="text-end">
+                <% if (item.status === 'pending') { %>
+                  <a class="btn btn-sm btn-outline-primary" href="/reports/<%= item.id %>/edit">Edit</a>
+                  <form class="d-inline" method="POST" action="/reports/<%= item.id %>/delete">
+                    <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Delete this pending report?')">Delete</button>
+                  </form>
+                <% } else { %>
+                  <span class="text-muted small">Closed</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</main>
+
+<%- include('../partials/footer') %>

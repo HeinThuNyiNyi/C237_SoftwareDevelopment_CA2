@@ -1,123 +1,28 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Log In &mdash; CampusCycle</title>
-<link rel="stylesheet" href="/css/style.css">
-</head>
-<body class="auth-body">
-
-<div class="auth-split">
-
-    <!-- Left: branding panel -->
-    <div class="auth-brand-panel">
-        <div class="auth-brand">
-            <div class="brand-icon">&#9851;</div>
-            <span class="campus-light">Campus</span><span class="cycle-light">Cycle</span>
-        </div>
-
-        <h1 class="auth-tagline">Give it a <span class="auth-highlight">second life</span> on campus</h1>
-        <p class="auth-subtagline">The marketplace built just for Republic Polytechnic students.</p>
-
-        <ul class="auth-points">
-            <li><span class="auth-tick">&#10003;</span> Buy and sell with fellow RP students</li>
-            <li><span class="auth-tick">&#10003;</span> Every listing checked by an admin</li>
-            <li><span class="auth-tick">&#10003;</span> Meet up safely on campus</li>
-        </ul>
-
-        <p class="auth-foot-note">&copy; 2026 CampusCycle &mdash; Buy less. Reuse more.</p>
-    </div>
-
-    <!-- Right: login form -->
-    <div class="auth-form-panel">
-        <div class="auth-form-box">
-
-            <h2 class="auth-title">Welcome back</h2>
-            <p class="auth-sub">Log in with your Republic Polytechnic account.</p>
-
-            <% if (justClosed) { %>
-                <div class="auth-alert auth-alert-success">
-                    <p>Your account has been closed. Contact the school administrator if you need it reopened.</p>
+<%- include('../partials/head', { title: 'Log In' }) %>
+<%- include('../partials/navbar') %>
+<main class="container py-5 page-shell">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <%- include('../partials/messages') %>
+            <%- include('../partials/back-button', { backUrl: '/' }) %>
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h1 class="h3 mb-4">Log in</h1>
+                    <form method="POST" action="/login">
+                        <div class="mb-3">
+                            <label class="form-label">RP email</label>
+                            <input class="form-control" type="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input class="form-control" type="password" name="password" required>
+                        </div>
+                        <button class="btn btn-success w-100">Log In</button>
+                    </form>
+                    <p class="mt-3 mb-0">New student? <a href="/register">Create an account</a>.</p>
                 </div>
-            <% } %>
-
-            <% if (errors && errors.length > 0) { %>
-                <div class="auth-alert auth-alert-error">
-                    <% errors.forEach(function(message) { %>
-                        <p><%= message %></p>
-                    <% }); %>
-                </div>
-            <% } %>
-
-            <% if (success && success.length > 0) { %>
-                <div class="auth-alert auth-alert-success">
-                    <% success.forEach(function(message) { %>
-                        <p><%= message %></p>
-                    <% }); %>
-                </div>
-            <% } %>
-
-            <form action="/login" method="POST" novalidate>
-
-                <label class="auth-label" for="studentId">Student ID</label>
-                <!-- Only the student ID is typed. The @myrp.edu.sg domain is
-                     shown here so the student can see the full address, and it
-                     is added again on the server, so the login can only ever be
-                     for an RP school email. -->
-                <div class="auth-email-group">
-                    <input
-                        type="text"
-                        id="studentId"
-                        name="studentId"
-                        class="auth-input auth-email-input"
-                        placeholder="25028720"
-                        value="<%= oldEmail %>"
-                        maxlength="80"
-                        autocomplete="username"
-                        required>
-                    <span class="auth-email-suffix">@myrp.edu.sg</span>
-                </div>
-                <p class="auth-hint">Log in with your RP student ID. The school domain is added for you.</p>
-
-                <label class="auth-label" for="password">Password</label>
-                <div class="auth-password-wrap">
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        class="auth-input"
-                        placeholder="Enter your password"
-                        required>
-                    <button type="button" class="auth-toggle" id="togglePassword">Show</button>
-                </div>
-
-                <button type="submit" class="auth-submit">Log In</button>
-            </form>
-
-            <p class="auth-note">
-                New student? <a href="/register" class="auth-link">Create an account</a><br>
-                Sign-ups are approved by the school administrator.
-            </p>
-
+            </div>
         </div>
     </div>
-
-</div>
-
-<script>
-// Show / hide the password so students can check what they typed.
-document.getElementById('togglePassword').addEventListener('click', function () {
-    var field = document.getElementById('password');
-    if (field.type === 'password') {
-        field.type = 'text';
-        this.textContent = 'Hide';
-    } else {
-        field.type = 'password';
-        this.textContent = 'Show';
-    }
-});
-</script>
-
-</body>
-</html>
+</main>
+<%- include('../partials/footer') %>

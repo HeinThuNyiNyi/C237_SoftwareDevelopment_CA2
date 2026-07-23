@@ -1,78 +1,44 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Reservations - CampusCycle</title>
-    <link rel="stylesheet" href="/css/style.css">
-</head>
-<body>
+<%- include('../partials/head', { title: 'Reservations' }) %>
 <%- include('../partials/navbar') %>
-
-<main class="reservation-page">
-    <div class="reservation-heading">
-        <div>
-            <h1>My Reservations</h1>
-            <p>Review your purchase requests and appointments for products you sell.</p>
-        </div>
-        <a href="/browse" class="btn-primary">Browse Products</a>
+<main class="container py-4 page-shell">
+    <%- include('../partials/messages') %>
+    <%- include('../partials/back-button', { backUrl: '/' }) %>
+    <h1 class="h3 mb-3">My reservations</h1>
+    <% const statusColours = {
+        requested: 'info',
+        proposed: 'warning',
+        confirmed: 'primary',
+        completed: 'success',
+        cancelled: 'secondary',
+        rejected: 'danger'
+    }; %>
+    <% if (reservations.length === 0) { %><div class="alert alert-info">No reservations yet.</div><% } %>
+    <div class="table-responsive">
+        <table class="table table-striped bg-white">
+            <thead><tr><th>Product</th><th>Buyer / Seller</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+                <% reservations.forEach(function(item) { %>
+                    <tr>
+                        <td><%= item.product_name %> × <%= item.quantity %></td>
+                        <td>
+                            <% if (currentUser.id === item.buyer_id) { %>
+                                Seller: <%= item.seller_name %>
+                            <% } else { %>
+                                Buyer: <%= item.buyer_name %>
+                            <% } %>
+                        </td>
+                        <td>$<%= Number(item.total_price).toFixed(2) %></td>
+                        <td><span class="badge status-badge text-bg-<%= statusColours[item.status] || 'secondary' %>"><%= item.status %></span></td>
+                        <td>
+                            <a class="btn btn-sm btn-outline-success" href="/reservations/<%= item.id %>">View</a>
+                            <% if (item.status === 'completed' && currentUser.id === item.buyer_id && !item.rating_id) { %>
+                                <a class="btn btn-sm btn-warning" href="/reservations/<%= item.id %>/rating">Rate</a>
+                            <% } %>
+                        </td>
+                    </tr>
+                <% }); %>
+            </tbody>
+        </table>
     </div>
-
-    <%- include('../partials/flashMessages', {
-        successMessages: success,
-        errorMessages: errors
-    }) %>
-
-    <% const outgoing = reservations.filter(item => item.buyer_id === currentUser.id); %>
-    <% const incoming = reservations.filter(item => item.seller_id === currentUser.id); %>
-
-    <section class="reservation-section">
-        <h2>Requests I Made</h2>
-        <% if (outgoing.length === 0) { %>
-            <div class="reservation-empty">You have not made any reservation requests.</div>
-        <% } else { %>
-            <div class="reservation-grid">
-                <% outgoing.forEach(reservation => { %>
-                    <article class="reservation-card">
-                        <div class="reservation-card-top">
-                            <h3><%= reservation.product_name %></h3>
-                            <span class="reservation-status status-<%= reservation.status %>"><%= reservation.status %></span>
-                        </div>
-                        <p><strong>Seller:</strong> <%= reservation.seller_name %></p>
-                        <p><strong>Date:</strong> <%= reservation.appointment_date ? new Date(reservation.appointment_date).toLocaleDateString('en-SG') : 'Not set' %></p>
-                        <p><strong>Time:</strong> <%= reservation.appointment_time ? String(reservation.appointment_time).slice(0, 5) : 'Not set' %></p>
-                        <p><strong>Location:</strong> <%= reservation.meeting_location || 'Not set' %></p>
-                        <a href="/reservations/<%= reservation.id %>" class="btn-outline">View Details</a>
-                    </article>
-                <% }); %>
-            </div>
-        <% } %>
-    </section>
-
-    <section class="reservation-section">
-        <h2>Requests for My Products</h2>
-        <% if (incoming.length === 0) { %>
-            <div class="reservation-empty">No one has requested your products yet.</div>
-        <% } else { %>
-            <div class="reservation-grid">
-                <% incoming.forEach(reservation => { %>
-                    <article class="reservation-card">
-                        <div class="reservation-card-top">
-                            <h3><%= reservation.product_name %></h3>
-                            <span class="reservation-status status-<%= reservation.status %>"><%= reservation.status %></span>
-                        </div>
-                        <p><strong>Buyer:</strong> <%= reservation.buyer_name %></p>
-                        <p><strong>Date:</strong> <%= reservation.appointment_date ? new Date(reservation.appointment_date).toLocaleDateString('en-SG') : 'Not set' %></p>
-                        <p><strong>Time:</strong> <%= reservation.appointment_time ? String(reservation.appointment_time).slice(0, 5) : 'Not set' %></p>
-                        <p><strong>Location:</strong> <%= reservation.meeting_location || 'Not set' %></p>
-                        <a href="/reservations/<%= reservation.id %>" class="btn-outline">Review Request</a>
-                    </article>
-                <% }); %>
-            </div>
-        <% } %>
-    </section>
 </main>
-
 <%- include('../partials/footer') %>
-</body>
-</html>

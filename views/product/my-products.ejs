@@ -1,0 +1,37 @@
+<%- include('../partials/head', { title: 'My Products' }) %>
+<%- include('../partials/navbar') %>
+<main class="container py-4 page-shell">
+    <%- include('../partials/messages') %>
+    <%- include('../partials/back-button', { backUrl: '/' }) %>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3">My products</h1>
+        <a class="btn btn-success" href="/products/new">Sell an Item</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-striped bg-white">
+            <thead><tr><th>Name</th><th>Price</th><th>Quantity</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+                <% products.forEach(function(product) { %>
+                    <tr>
+                        <td><a href="/products/<%= product.id %>"><%= product.name %></a></td>
+                        <td>$<%= Number(product.price).toFixed(2) %></td>
+                        <td><%= product.quantity %></td>
+                        <td>
+                            <span class="badge status-badge text-bg-<%= product.status === 'approved' ? 'success' : product.status === 'rejected' ? 'danger' : 'secondary' %>">
+                                <%= product.status %>
+                            </span>
+                            <% if (product.rejection_reason) { %><small class="d-block text-danger"><%= product.rejection_reason %></small><% } %>
+                        </td>
+                        <td>
+                            <a class="btn btn-sm btn-outline-primary" href="/products/<%= product.id %>/edit">Edit</a>
+                            <form class="d-inline" method="POST" action="/products/<%= product.id %>/delete" onsubmit="return confirm('Delete this product?')">
+                                <button class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    </div>
+</main>
+<%- include('../partials/footer') %>

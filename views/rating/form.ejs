@@ -1,0 +1,57 @@
+<%- include('../partials/head', { title: rating ? 'Edit Rating' : 'Give Rating' }) %>
+<%- include('../partials/navbar') %>
+
+<main class="container py-4">
+  <%- include('../partials/messages') %>
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <div class="card shadow-sm">
+        <div class="card-body p-4">
+          <h1 class="h3 mb-2"><%= rating ? 'Edit Rating' : 'Give Rating' %></h1>
+          <p class="text-muted">Completed purchase: <%= reservation.product_name %></p>
+
+          <form method="POST" action="<%= formAction %>" enctype="multipart/form-data">
+            <div class="mb-3">
+              <label for="rating" class="form-label">Rating</label>
+              <select class="form-select" id="rating" name="rating" required>
+                <option value="">Choose a score</option>
+                <% for (let score = 5; score >= 1; score--) { %>
+                  <option value="<%= score %>" <%= rating && Number(rating.rating) === score ? 'selected' : '' %>>
+                    <%= score %> / 5
+                  </option>
+                <% } %>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="comment" class="form-label">Comment</label>
+              <textarea class="form-control" id="comment" name="comment" rows="4" maxlength="500"><%= rating ? rating.comment || '' : '' %></textarea>
+            </div>
+
+            <div class="mb-3">
+              <label for="ratingImage" class="form-label">Review image <span class="text-secondary">(optional)</span></label>
+              <input class="form-control" id="ratingImage" name="ratingImage" type="file" accept="image/*">
+              <div class="form-text">
+                <% if (rating && rating.image) { %>
+                  Leave this empty to keep the existing image, or choose a new image to replace it.
+                <% } else { %>
+                  You can submit the rating and comment without an image.
+                <% } %>
+              </div>
+              <% if (rating && rating.image) { %>
+                <img class="rating-image img-fluid rounded border mt-3" src="/uploads/<%= rating.image %>" alt="Current review image">
+              <% } %>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button class="btn btn-success" type="submit"><%= rating ? 'Save Changes' : 'Submit Rating' %></button>
+              <a class="btn btn-outline-secondary" href="/history">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<%- include('../partials/footer') %>

@@ -1,31 +1,18 @@
 {
-  "name": "ca2-project",
+  "name": "campuscycle-2",
   "version": "1.0.0",
-  "description": "C237 Software Application Development CA2 project",
+  "description": "Lesson-aligned C237 CA2 campus marketplace",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js",
-    "seed:ratings": "node scripts/seedRatingTestData.js"
+    "start": "node app.js"
   },
   "dependencies": {
     "connect-flash": "^0.1.1",
-    "dotenv": "^16.4.5",
+    "dotenv": "^17.4.2",
     "ejs": "^3.1.10",
     "express": "^4.22.2",
     "express-session": "^1.18.0",
     "multer": "^2.2.0",
     "mysql2": "^3.23.1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/HeinThuNyiNyi/C237_SoftwareDevelopment_CA2.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/HeinThuNyiNyi/C237_SoftwareDevelopment_CA2/issues"
-  },
-  "homepage": "https://github.com/HeinThuNyiNyi/C237_SoftwareDevelopment_CA2#readme"
+  }
 }

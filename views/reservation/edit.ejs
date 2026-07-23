@@ -1,47 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Reservation - CampusCycle</title>
-    <link rel="stylesheet" href="/css/style.css">
-</head>
-<body>
+<%- include('../partials/head', { title: 'Propose Meetup' }) %>
 <%- include('../partials/navbar') %>
-
-<main class="reservation-page">
-    <a href="/reservations/<%= reservation.id %>" class="back-link">&larr; Back to reservation</a>
-
-    <section class="reservation-form-card">
-        <h1>Edit Appointment Request</h1>
-        <p class="reservation-help">Changing a seller proposal sends the reservation back to <strong>pending</strong> for the seller to review.</p>
-
-        <%- include('../partials/flashMessages', {
-            successMessages: [],
-            errorMessages: errors
-        }) %>
-
-        <form action="/reservations/<%= reservation.id %>/update" method="POST" class="reservation-form">
-            <label for="appointmentDate">Preferred date</label>
-            <input id="appointmentDate" name="appointmentDate" type="date"
-                   value="<%= reservation.appointment_date ? new Date(reservation.appointment_date).toISOString().slice(0, 10) : '' %>" required>
-
-            <label for="appointmentTime">Preferred time</label>
-            <input id="appointmentTime" name="appointmentTime" type="time"
-                   value="<%= reservation.appointment_time ? String(reservation.appointment_time).slice(0, 5) : '' %>" required>
-
-            <label for="meetingLocation">Meeting location</label>
-            <input id="meetingLocation" name="meetingLocation" type="text" maxlength="255"
-                   value="<%= reservation.meeting_location || '' %>" required>
-
-            <div class="reservation-actions">
-                <button type="submit" class="btn-primary">Update Request</button>
-                <a href="/reservations/<%= reservation.id %>" class="btn-outline">Cancel</a>
-            </div>
-        </form>
-    </section>
+<main class="container py-4 page-shell">
+    <div class="row justify-content-center"><div class="col-lg-7">
+        <%- include('../partials/messages') %>
+        <%- include('../partials/back-button', { backUrl: '/reservations/' + reservation.id }) %>
+        <div class="card shadow-sm"><div class="card-body p-4">
+            <h1 class="h3">Propose meetup for <%= reservation.product_name %></h1>
+            <form method="POST" action="/reservations/<%= reservation.id %>/edit">
+                <div class="mb-3">
+                    <label class="form-label">Date</label>
+                    <input class="form-control" type="date" name="appointmentDate" value="<%= reservation.appointment_date ? new Date(reservation.appointment_date).toISOString().slice(0,10) : '' %>" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Time</label>
+                    <input class="form-control" type="time" name="appointmentTime" value="<%= reservation.appointment_time ? String(reservation.appointment_time).slice(0,5) : '' %>" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Campus location</label>
+                    <input class="form-control" name="meetingLocation" value="<%= reservation.meeting_location || '' %>" required>
+                </div>
+                <button class="btn btn-success">Send Proposal</button>
+            </form>
+        </div></div>
+    </div></div>
 </main>
-
 <%- include('../partials/footer') %>
-</body>
-</html>

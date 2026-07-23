@@ -1,0 +1,24 @@
+<%- include('partials/head', { title: 'Wishlist' }) %>
+<%- include('partials/navbar') %>
+<main class="container py-4 page-shell">
+    <%- include('partials/messages') %>
+    <%- include('partials/back-button', { backUrl: '/' }) %>
+    <h1 class="h3 mb-3">Wishlist</h1>
+    <% if (items.length === 0) { %><div class="alert alert-info">Your wishlist is empty.</div><% } %>
+    <div class="row g-3">
+        <% items.forEach(function(item) { %>
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm"><div class="card-body">
+                    <h2 class="h5"><%= item.name %></h2>
+                    <p class="text-secondary">Seller: <%= item.seller_name %></p>
+                    <p class="fw-bold text-success">$<%= Number(item.price).toFixed(2) %></p>
+                    <a class="btn btn-outline-success" href="/products/<%= item.id %>">View</a>
+                    <form class="d-inline" method="POST" action="/wishlist/delete/<%= item.wishlist_id %>">
+                        <button class="btn btn-outline-danger">Remove</button>
+                    </form>
+                </div></div>
+            </div>
+        <% }); %>
+    </div>
+</main>
+<%- include('partials/footer') %>

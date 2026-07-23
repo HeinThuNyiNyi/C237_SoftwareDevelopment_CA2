@@ -1,0 +1,82 @@
+<%- include('../partials/head', { title: 'Purchase and Sales History' }) %>
+<%- include('../partials/navbar') %>
+<main class="container py-4 page-shell">
+    <%- include('../partials/messages') %>
+    <%- include('../partials/back-button', { backUrl: '/reservations' }) %>
+    <h1 class="h3">Completed purchase and sales history</h1>
+    <p class="text-secondary">Completed reservation rows serve as purchase records.</p>
+    <div class="table-responsive">
+        <table class="table table-striped bg-white">
+            <thead><tr><th>Product</th><th>Role</th><th>Other party</th><th>Total</th><th>Completed</th><th>Rating</th></tr></thead>
+            <tbody>
+                <% reservations.forEach(function(item) { %>
+                    <tr>
+                        <td><%= item.product_name %></td>
+                        <td><%= currentUser.id === item.buyer_id ? 'Buyer' : 'Seller' %></td>
+                        <td><%= currentUser.id === item.buyer_id ? item.seller_name : item.buyer_name %></td>
+                        <td>$<%= Number(item.total_price).toFixed(2) %></td>
+                        <td><%= new Date(item.completed_at).toLocaleDateString() %></td>
+                        <td>
+                            <% if (currentUser.id === item.buyer_id && !item.rating_id) { %>
+                                <a class="btn btn-sm btn-warning" href="/reservations/<%= item.id %>/rating">Rate Purchase</a>
+                            <% } else if (currentUser.id === item.buyer_id) { %>
+                                <span class="me-2"><%= item.rating_value %>/5</span>
+                                <a class="btn btn-sm btn-outline-primary" href="/ratings/<%= item.rating_id %>/edit">Edit</a>
+                                <form class="d-inline" method="POST" action="/ratings/<%= item.rating_id %>/delete">
+                                    <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Delete this rating?')">Delete</button>
+                                </form>
+                            <% } else if (item.rating_id) { %>
+                                <span class="badge text-bg-warning">Received: <%= item.rating_value %>/5</span>
+                                <button class="btn btn-sm btn-outline-primary ms-1" type="button"
+                                        data-bs-toggle="modal" data-bs-target="#ratingCommentModal<%= item.rating_id %>">
+                                    View
+                                </button>
+                            <% } else { %>
+                                <span class="text-secondary">Not rated yet</span>
+                            <% } %>
+                        </td>
+                    </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    </div>
+
+    <% reservations.forEach(function(item) { %>
+        <% if (currentUser.id === item.seller_id && item.rating_id) { %>
+            <div class="modal fade" id="ratingCommentModal<%= item.rating_id %>" tabindex="-1"
+                 aria-labelledby="ratingCommentTitle<%= item.rating_id %>" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2 class="modal-title fs-5" id="ratingCommentTitle<%= item.rating_id %>">
+                                Rating for <%= item.product_name %>
+                            </h2>
+                            <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">Buyer</dt>
+                                <dd class="col-sm-8"><%= item.buyer_name %></dd>
+                                <dt class="col-sm-4">Rating</dt>
+                                <dd class="col-sm-8"><%= item.rating_value %>/5</dd>
+                                <dt class="col-sm-4">Comment</dt>
+                                <dd class="col-sm-8 mb-0"><%= item.rating_comment || 'No written comment.' %></dd>
+                                <% if (item.rating_image) { %>
+                                    <dt class="col-sm-4 mt-3">Image</dt>
+                                    <dd class="col-sm-8 mt-3 mb-0">
+                                        <img class="rating-image img-fluid rounded border"
+                                             src="/uploads/<%= item.rating_image %>" alt="Review image for <%= item.product_name %>">
+                                    </dd>
+                                <% } %>
+                            </dl>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <% } %>
+    <% }); %>
+</main>
+<%- include('../partials/footer') %>
