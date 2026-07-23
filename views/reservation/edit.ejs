@@ -16,9 +16,10 @@
         <h1>Edit Appointment Request</h1>
         <p class="reservation-help">Changing a seller proposal sends the reservation back to <strong>pending</strong> for the seller to review.</p>
 
-        <% if (errors && errors.length > 0) { %>
-            <div class="alert alert-error"><%= errors[0] %></div>
-        <% } %>
+        <%- include('../partials/flashMessages', {
+            successMessages: [],
+            errorMessages: errors
+        }) %>
 
         <form action="/reservations/<%= reservation.id %>/update" method="POST" class="reservation-form">
             <label for="appointmentDate">Preferred date</label>
@@ -41,8 +42,6 @@
     </section>
 </main>
 
-<footer class="footer">
-    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
-</footer>
+<%- include('../partials/footer') %>
 </body>
 </html>

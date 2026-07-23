@@ -17,36 +17,26 @@
 
 <div class="admin-section">
 
-    <a href="/users/<%= seller.id %>" class="btn-outline pubprof-link-btn" style="margin-bottom:16px;">&larr; Back to profile</a>
+    <a href="/users/<%= seller.id %>" class="btn-outline pubprof-link-btn review-back-link">&larr; Back to profile</a>
 
     <% if (reviews.length === 0) { %>
         <p>No reviews yet.</p>
     <% } %>
 
     <% reviews.forEach(function(review) { %>
-        <div class="pubprof-review">
-            <div class="pubprof-review-head">
-                <strong><%= review.authorLabel %></strong>
-                <span class="pubprof-review-product">
-                    on <%= review.productName %> &middot; <%= new Date(review.updatedAt).toLocaleDateString() %>
-                </span>
-            </div>
-            <div class="pubprof-review-stars">
-                <% for (let star = 1; star <= 5; star++) { %>
-                    <%= star <= review.rating ? '★' : '☆' %>
-                <% } %>
-            </div>
-            <% if (review.comment) { %>
-                <p class="pubprof-review-comment"><%= review.comment %></p>
-            <% } %>
-        </div>
+        <%- include('../partials/reviewCard', {
+            review,
+            compact: true,
+            showImage: false,
+            showProduct: true,
+            showDate: true,
+            emptyCommentText: null
+        }) %>
     <% }); %>
 
 </div>
 
-<footer class="footer">
-    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
-</footer>
+<%- include('../partials/footer') %>
 
 </body>
 </html>

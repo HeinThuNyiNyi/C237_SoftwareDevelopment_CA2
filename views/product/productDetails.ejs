@@ -58,12 +58,10 @@
 <% } %>
 
 <div class="admin-section">
-    <% if (errors && errors.length > 0) { %>
-        <div class="alert alert-error"><%= errors[0] %></div>
-    <% } %>
-    <% if (success && success.length > 0) { %>
-        <div class="alert alert-success"><%= success[0] %></div>
-    <% } %>
+    <%- include('../partials/flashMessages', {
+        successMessages: success,
+        errorMessages: errors
+    }) %>
 
     <div class="review-card">
         <div class="review-thumb" style="width:220px; height:220px;">
@@ -86,10 +84,12 @@
             <p style="margin-top:14px;"><%= product.description %></p>
 
             <!-- Rating summary comes from the ratings table; the link only opens the public reviews list. -->
-            <a href="/details/<%= product.id %>/ratings" class="rating" style="margin-top:14px;">
-                <span class="rating-stars" aria-hidden="true">
-                    <% for (let star = 1; star <= 5; star++) { %><span class="<%= star <= Math.round(average) ? 'is-filled' : '' %>">★</span><% } %>
-                </span>
+            <a href="/details/<%= product.id %>/ratings" class="rating product-rating-link">
+                <%- include('../partials/stars', {
+                    value: average,
+                    containerClass: 'rating-stars',
+                    label: `${average} out of 5 stars`
+                }) %>
                 <strong><%= average.toFixed(1) %></strong>
                 <span class="count"><%= reviewCount %> verified review<%= reviewCount === 1 ? '' : 's' %></span>
             </a>
@@ -140,9 +140,7 @@
     <a href="/browse" class="btn-outline">&larr; Back to Browse</a>
 </div>
 
-<footer class="footer">
-    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
-</footer>
+<%- include('../partials/footer') %>
 
 </body>
 </html>

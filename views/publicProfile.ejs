@@ -144,24 +144,18 @@
             <p class="pubprof-placeholder">No reviews yet.</p>
         <% } else { %>
             <% recentReviews.forEach(function(review) { %>
-                <div class="pubprof-review">
-                    <div class="pubprof-review-head">
-                        <strong><%= review.authorLabel %></strong>
-                        <span class="pubprof-review-product">on <%= review.productName %></span>
-                    </div>
-                    <div class="pubprof-review-stars">
-                        <% for (let star = 1; star <= 5; star++) { %>
-                            <%= star <= review.rating ? '★' : '☆' %>
-                        <% } %>
-                    </div>
-                    <% if (review.comment) { %>
-                        <p class="pubprof-review-comment"><%= review.comment %></p>
-                    <% } %>
-                </div>
+                <%- include('partials/reviewCard', {
+                    review,
+                    compact: true,
+                    showImage: false,
+                    showProduct: true,
+                    showDate: false,
+                    emptyCommentText: null
+                }) %>
             <% }); %>
 
             <% if (stats.reviewCount > recentReviews.length) { %>
-                <a href="/users/<%= profile.id %>/reviews" class="btn-outline pubprof-link-btn" style="margin-top:12px;">
+                <a href="/users/<%= profile.id %>/reviews" class="btn-outline pubprof-link-btn pubprof-review-more">
                     View all <%= stats.reviewCount %> reviews
                 </a>
             <% } %>
@@ -170,9 +164,7 @@
 
 </div>
 
-<footer class="footer">
-    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
-</footer>
+<%- include('partials/footer') %>
 
 </body>
 </html>

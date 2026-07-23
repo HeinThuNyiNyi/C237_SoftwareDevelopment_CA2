@@ -17,25 +17,23 @@
 
 <section class="hero">
     <h1>Reviews for <%= item.name %></h1>
-    <div class="stars-display" style="justify-content:center; margin-top:8px;">
-        <% for (let star = 1; star <= 5; star++) { %>
-            <span class="<%= star <= roundedAverage ? 'is-filled' : '' %>">&#9733;</span>
-        <% } %>
-    </div>
+    <%- include('../partials/stars', {
+        value: roundedAverage,
+        containerClass: 'stars-display rating-overview-stars',
+        label: `${averageRating.toFixed(1)} out of 5 stars`
+    }) %>
     <p><%= averageRating.toFixed(1) %> out of 5 &middot; <%= reviewCount %> review<%= reviewCount === 1 ? '' : 's' %></p>
 </section>
 
 <div class="admin-section">
 
-    <% if (success) { %>
-        <p style="color:#176b3a;"><%= success %></p>
-    <% } %>
-    <% if (error) { %>
-        <p style="color:#b83b3b;"><%= error %></p>
-    <% } %>
+    <%- include('../partials/flashMessages', {
+        successMessages: success,
+        errorMessages: error
+    }) %>
 
     <% if (canReview) { %>
-        <a href="/details/<%= itemId %>/rating/new" class="btn-primary" style="display:inline-block; margin-bottom:20px;">
+        <a href="/details/<%= itemId %>/ratings/new" class="btn-primary rating-write-link">
             <%= hasExistingReview ? 'Edit My Review' : 'Write a Review' %>
         </a>
     <% } else if (!isLoggedIn) { %>
@@ -49,32 +47,19 @@
     <% } %>
 
     <% reviews.forEach(function(review) { %>
-        <div class="review-card">
-            <div class="review-thumb">
-                <% if (review.image) { %>
-                    <img src="<%= review.image %>" alt="Photo from <%= review.authorLabel %>" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
-                <% } else { %>
-                    &#9733;
-                <% } %>
-            </div>
-            <div class="review-body">
-                <h4><%= review.authorLabel %></h4>
-                <div class="stars-display">
-                    <% for (let star = 1; star <= 5; star++) { %>
-                        <span class="<%= star <= review.rating ? 'is-filled' : '' %>">&#9733;</span>
-                    <% } %>
-                </div>
-                <p class="review-meta"><%= new Date(review.updatedAt).toLocaleDateString() %></p>
-                <p><%= review.comment || 'This buyer left a star rating without a written comment.' %></p>
-            </div>
-        </div>
+        <%- include('../partials/reviewCard', {
+            review,
+            compact: false,
+            showImage: true,
+            showProduct: false,
+            showDate: true,
+            emptyCommentText: 'This buyer left a star rating without a written comment.'
+        }) %>
     <% }); %>
 
 </div>
 
-<footer class="footer">
-    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
-</footer>
+<%- include('../partials/footer') %>
 
 </body>
 </html>

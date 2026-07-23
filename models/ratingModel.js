@@ -1,7 +1,7 @@
 const db = require('../config/db');
 const fs = require('fs');
 const path = require('path');
-const { uploadDirectory } = require('../middleware/ratingUpload');
+const { ratingUploadDirectory } = require('../middleware/imageUpload');
 
 // Ratings: a buyer leaves a 1-5 star rating, a written comment, and one
 // optional photo, for a product they actually bought.
@@ -9,22 +9,13 @@ const { uploadDirectory } = require('../middleware/ratingUpload');
 // Average rating + review count for one product, counting only reviews from
 // buyers who actually completed a purchase of that product.
 function getSummaryByProductId(productId, callback) {
-    const sql = `SELECT
-                    COALESCE(ROUND(AVG(r.rating), 1), 0) AS average_rating,
-                    COUNT(*) AS review_count
-                 FROM ratings r
-                 WHERE r.product_id = ?
-                   AND EXISTS (
-                        SELECT 1 FROM purchases p
-                        WHERE p.buyer_id = r.buyer_id AND p.product_id = r.product_id
-                   )`;
-    db.query(sql, [productId], (error, rows) => {
+    getSummariesByProductIds([productId], (error, summaries) => {
         if (error) {
             return callback(error);
         }
-        callback(null, {
-            averageRating: Number(rows[0].average_rating),
-            reviewCount: Number(rows[0].review_count)
+        callback(null, summaries.get(Number(productId)) || {
+            averageRating: 0,
+            reviewCount: 0
         });
     });
 }
@@ -159,10 +150,46 @@ function upsert({ productId, buyerId, sellerId, rating, comment, isAnonymous, im
 
             // A replaced photo's old file is no longer referenced, so remove it.
             if (image && existingRating && existingRating.image && existingRating.image !== image) {
-                fs.unlink(path.join(uploadDirectory, existingRating.image), () => {});
+                fs.unlink(path.join(ratingUploadDirectory, existingRating.image), () => {});
             }
 
             callback(null);
+        });
+    });
+}
+
+// Delete only the current buyer's review for this product. The same lookup
+// used by the edit form is reused here so the attached photo can be removed
+// after the database row has been deleted successfully.
+function deleteByProductAndBuyer(productId, buyerId, callback) {
+    findByProductAndBuyer(productId, buyerId, (findError, existingRating) => {
+        if (findError) {
+            return callback(findError);
+        }
+        if (!existingRating) {
+            return callback(null, { deleted: false });
+        }
+
+        const sql = `DELETE FROM ratings
+                     WHERE product_id = ? AND buyer_id = ?`;
+        db.query(sql, [productId, buyerId], (error, result) => {
+            if (error) {
+                return callback(error);
+            }
+            if (result.affectedRows === 0) {
+                return callback(null, { deleted: false });
+            }
+
+            if (!existingRating.image) {
+                return callback(null, { deleted: true });
+            }
+
+            fs.unlink(path.join(ratingUploadDirectory, existingRating.image), (unlinkError) => {
+                if (unlinkError && unlinkError.code !== 'ENOENT') {
+                    console.error('Unable to remove rating image:', unlinkError.message);
+                }
+                callback(null, { deleted: true });
+            });
         });
     });
 }
@@ -173,5 +200,6 @@ module.exports = {
     getPublicReviewsByProductId,
     getReviewsBySellerId,
     findByProductAndBuyer,
-    upsert
+    upsert,
+    deleteByProductAndBuyer
 };

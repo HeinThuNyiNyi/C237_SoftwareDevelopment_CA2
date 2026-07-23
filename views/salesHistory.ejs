@@ -15,14 +15,12 @@
     <p>Your listings and everything you've sold.</p>
 </section>
 
-<% if (errors && errors.length > 0) { %>
+<% if ((errors && errors.length > 0) || (success && success.length > 0)) { %>
     <div class="admin-section" style="padding-bottom:0;">
-        <div class="alert alert-error"><%= errors[0] %></div>
-    </div>
-<% } %>
-<% if (success && success.length > 0) { %>
-    <div class="admin-section" style="padding-bottom:0;">
-        <div class="alert alert-success"><%= success[0] %></div>
+        <%- include('partials/flashMessages', {
+            successMessages: success,
+            errorMessages: errors
+        }) %>
     </div>
 <% } %>
 
@@ -103,9 +101,7 @@
     <% }); %>
 </div>
 
-<footer class="footer">
-    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
-</footer>
+<%- include('partials/footer') %>
 
 </body>
 </html>

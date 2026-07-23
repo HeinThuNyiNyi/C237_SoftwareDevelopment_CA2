@@ -14,9 +14,7 @@ const ratingModel = require('./models/ratingModel');
 const purchaseModel = require('./models/purchaseModel');
 const wishlistModel = require('./models/wishlistModel');
 const cartModel = require('./models/cartModel');
-const { ratingUpload } = require('./middleware/ratingUpload');
-const { productUpload } = require('./middleware/productUpload');
-const { reportUpload } = require('./middleware/reportUpload');
+const { ratingUpload, productUpload, reportUpload } = require('./middleware/imageUpload');
 const { isLoggedIn, isAdmin, isGuest, validateLogin, validateRegistration } = require('./middleware/auth');
 
 const app = express();
@@ -440,12 +438,10 @@ app.get('/sales-history', isLoggedIn, (req, res) => {
 // Buyer ratings & reviews (a star rating, a comment, and one optional
 // photo) on a completed purchase.
 
-function toItemView(product) {
+function toRatingItem(product) {
     return {
         id: product.id,
-        name: product.name,
-        price: Number(product.price),
-        image: product.image ? `/images/${product.image}` : null
+        name: product.name
     };
 }
 
@@ -507,18 +503,23 @@ app.get('/details/:id/ratings', (req, res, next) => {
                     return next(reviewsError);
                 }
 
-                if (!buyerId) {
-                    return res.render('rating/ratings', {
-                        item: toItemView(product),
+                // Keep one render path so every access state receives the same page data.
+                const renderRatingsPage = ({ canReview = false, hasExistingReview = false } = {}) => {
+                    res.render('rating/ratings', {
+                        item: toRatingItem(product),
                         itemId: productId,
                         ratingSummary,
                         reviews,
-                        isLoggedIn: false,
-                        canReview: false,
-                        hasExistingReview: false,
+                        isLoggedIn: Boolean(buyerId),
+                        canReview,
+                        hasExistingReview,
                         success: req.flash('success')[0] || null,
                         error: req.flash('error')[0] || null
                     });
+                };
+
+                if (!buyerId) {
+                    return renderRatingsPage();
                 }
 
                 purchaseModel.findCompletedPurchase(buyerId, productId, (purchaseError, purchase) => {
@@ -531,16 +532,9 @@ app.get('/details/:id/ratings', (req, res, next) => {
                             return next(ratingError);
                         }
 
-                        res.render('rating/ratings', {
-                            item: toItemView(product),
-                            itemId: productId,
-                            ratingSummary,
-                            reviews,
-                            isLoggedIn: true,
+                        renderRatingsPage({
                             canReview: Boolean(purchase),
-                            hasExistingReview: Boolean(existingRating),
-                            success: req.flash('success')[0] || null,
-                            error: req.flash('error')[0] || null
+                            hasExistingReview: Boolean(existingRating)
                         });
                     });
                 });
@@ -549,13 +543,8 @@ app.get('/details/:id/ratings', (req, res, next) => {
     });
 });
 
-// Legacy/singular URL - redirect straight to the reviews list.
-app.get('/details/:id/rating', (req, res) => {
-    res.redirect(301, `/details/${req.params.id}/ratings`);
-});
-
 // Write/edit a review form.
-app.get('/details/:id/rating/new', requirePurchasedProduct, (req, res, next) => {
+app.get('/details/:id/ratings/new', requirePurchasedProduct, (req, res, next) => {
     const productId = Number(req.params.id);
 
     productModel.getProductById(productId, (error, results) => {
@@ -574,12 +563,13 @@ app.get('/details/:id/rating/new', requirePurchasedProduct, (req, res, next) => 
 
             res.render('rating/rating', {
                 pageTitle: existingRating ? 'Update your review' : 'Share your experience',
-                item: toItemView(product),
+                item: toRatingItem(product),
                 itemId: productId,
                 selectedRating: existingRating?.rating || 0,
                 comment: existingRating?.comment || '',
                 isAnonymous: existingRating?.is_anonymous || false,
                 existingImage: existingRating?.image ? `/images/ratings/${existingRating.image}` : null,
+                hasExistingReview: Boolean(existingRating),
                 success: null,
                 error: req.flash('error')[0] || null
             });
@@ -588,11 +578,11 @@ app.get('/details/:id/rating/new', requirePurchasedProduct, (req, res, next) => 
 });
 
 // Submit a new or updated review.
-app.post('/details/:id/rating/new', requirePurchasedProduct, (req, res, next) => {
+app.post('/details/:id/ratings', requirePurchasedProduct, (req, res, next) => {
     ratingUpload(req, res, (uploadError) => {
         if (uploadError) {
             req.flash('error', uploadError.message);
-            return res.redirect(`/details/${req.params.id}/rating/new`);
+            return res.redirect(`/details/${req.params.id}/ratings/new`);
         }
 
         const productId = Number(req.params.id);
@@ -604,13 +594,13 @@ app.post('/details/:id/rating/new', requirePurchasedProduct, (req, res, next) =>
         if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
             if (req.file) fs.unlink(req.file.path, () => {});
             req.flash('error', 'Please choose a rating from 1 to 5 stars');
-            return res.redirect(`/details/${productId}/rating/new`);
+            return res.redirect(`/details/${productId}/ratings/new`);
         }
 
         if (comment && comment.length > 500) {
             if (req.file) fs.unlink(req.file.path, () => {});
             req.flash('error', 'Your review must be 500 characters or fewer');
-            return res.redirect(`/details/${productId}/rating/new`);
+            return res.redirect(`/details/${productId}/ratings/new`);
         }
 
         ratingModel.upsert({
@@ -623,11 +613,35 @@ app.post('/details/:id/rating/new', requirePurchasedProduct, (req, res, next) =>
             image
         }, (error) => {
             if (error) {
+                if (req.file) fs.unlink(req.file.path, () => {});
                 return next(error);
             }
             req.flash('success', 'Your rating has been saved');
             res.redirect(`/details/${productId}/ratings`);
         });
+    });
+});
+
+// Delete the signed-in buyer's own review and its optional photo.
+app.post('/details/:id/ratings/delete', isLoggedIn, (req, res, next) => {
+    const productId = Number(req.params.id);
+    const buyerId = Number(req.session.user.id);
+
+    if (!Number.isInteger(productId) || productId <= 0) {
+        return res.status(400).send('Invalid product ID');
+    }
+
+    ratingModel.deleteByProductAndBuyer(productId, buyerId, (error, result) => {
+        if (error) {
+            return next(error);
+        }
+        if (!result.deleted) {
+            req.flash('error', 'No review was found for this account');
+            return res.redirect(`/details/${productId}/ratings`);
+        }
+
+        req.flash('success', 'Your review has been deleted');
+        res.redirect(`/details/${productId}/ratings`);
     });
 });
 

@@ -23,10 +23,14 @@ function getPurchasesByBuyer(buyerId, callback) {
     const sql = `SELECT purchases.*,
                         products.name AS productName,
                         products.image AS productImage,
-                        sellers.name AS sellerName
+                        sellers.name AS sellerName,
+                        ratings.id AS ratingId
                  FROM purchases
                  JOIN products ON purchases.product_id = products.id
                  JOIN users AS sellers ON purchases.seller_id = sellers.id
+                 LEFT JOIN ratings
+                   ON ratings.product_id = purchases.product_id
+                  AND ratings.buyer_id = purchases.buyer_id
                  WHERE purchases.buyer_id = ?
                  ORDER BY purchases.purchased_at DESC`;
     db.query(sql, [buyerId], callback);

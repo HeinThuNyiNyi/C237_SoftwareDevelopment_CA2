@@ -37,16 +37,16 @@
                 <p class="review-meta">Purchased: <%= new Date(purchase.purchased_at).toLocaleDateString() %></p>
             </div>
             <div class="review-actions">
-                <a href="/details/<%= purchase.product_id %>/rating/new" class="btn-primary">Give Rating</a>
+                <a href="/details/<%= purchase.product_id %>/ratings/new" class="btn-primary">
+                    <%= purchase.ratingId ? 'Edit Rating' : 'Give Rating' %>
+                </a>
             </div>
         </div>
     <% }); %>
 
 </div>
 
-<footer class="footer">
-    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
-</footer>
+<%- include('partials/footer') %>
 
 </body>
 </html>

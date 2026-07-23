@@ -66,11 +66,11 @@
 
                 <!-- Rating comes from the ratings table; the link only opens the public reviews list. -->
                 <a href="/details/<%= product.id %>/ratings" class="rating" aria-label="<%= count ? `${average} out of 5 from ${count} reviews` : 'No verified reviews yet' %>">
-                    <span class="rating-stars" aria-hidden="true">
-                        <% for (let star = 1; star <= 5; star++) { %>
-                            <span class="<%= star <= Math.round(average) ? 'is-filled' : '' %>">★</span>
-                        <% } %>
-                    </span>
+                    <%- include('../partials/stars', {
+                        value: average,
+                        containerClass: 'rating-stars',
+                        label: `${average} out of 5 stars`
+                    }) %>
                     <strong><%= average.toFixed(1) %></strong>
                     <span class="count">(<%= count %>)</span>
                 </a>
@@ -87,9 +87,7 @@
 
 </div>
 
-<footer class="footer">
-    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
-</footer>
+<%- include('../partials/footer') %>
 
 </body>
 </html>

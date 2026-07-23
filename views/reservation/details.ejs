@@ -12,12 +12,10 @@
 <main class="reservation-page">
     <a href="/reservations" class="back-link">&larr; Back to reservations</a>
 
-    <% if (errors && errors.length > 0) { %>
-        <div class="alert alert-error"><%= errors[0] %></div>
-    <% } %>
-    <% if (success && success.length > 0) { %>
-        <div class="alert alert-success"><%= success[0] %></div>
-    <% } %>
+    <%- include('../partials/flashMessages', {
+        successMessages: success,
+        errorMessages: errors
+    }) %>
 
     <% const isBuyer = reservation.buyer_id === currentUser.id; %>
     <% const isSeller = reservation.seller_id === currentUser.id; %>
@@ -128,8 +126,6 @@
     </section>
 </main>
 
-<footer class="footer">
-    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
-</footer>
+<%- include('../partials/footer') %>
 </body>
 </html>

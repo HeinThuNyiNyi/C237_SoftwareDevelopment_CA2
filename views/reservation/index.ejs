@@ -18,12 +18,10 @@
         <a href="/browse" class="btn-primary">Browse Products</a>
     </div>
 
-    <% if (errors && errors.length > 0) { %>
-        <div class="alert alert-error"><%= errors[0] %></div>
-    <% } %>
-    <% if (success && success.length > 0) { %>
-        <div class="alert alert-success"><%= success[0] %></div>
-    <% } %>
+    <%- include('../partials/flashMessages', {
+        successMessages: success,
+        errorMessages: errors
+    }) %>
 
     <% const outgoing = reservations.filter(item => item.buyer_id === currentUser.id); %>
     <% const incoming = reservations.filter(item => item.seller_id === currentUser.id); %>
@@ -75,8 +73,6 @@
     </section>
 </main>
 
-<footer class="footer">
-    &copy; 2026 <span class="brand-footer">CampusCycle</span> &mdash; Buy less. Reuse more.
-</footer>
+<%- include('../partials/footer') %>
 </body>
 </html>
