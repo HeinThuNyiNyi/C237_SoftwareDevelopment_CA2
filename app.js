@@ -496,8 +496,13 @@ app.post('/profile/delete', isLoggedIn, (req, res) => {
     );
 });
 app.get('/users/:id', (req, res) => {
-    const userSql = `SELECT id, name, role, created_at FROM users
-                     WHERE id = ? AND is_banned = 0`;
+    const userSql = `SELECT u.id, u.name, u.role, u.created_at,
+                            COALESCE(AVG(ra.rating), 0) AS average_rating,
+                            COUNT(ra.id) AS review_count
+                     FROM users u
+                     LEFT JOIN ratings ra ON ra.seller_id = u.id
+                     WHERE u.id = ? AND u.is_banned = 0
+                     GROUP BY u.id, u.name, u.role, u.created_at`;
     db.query(userSql, [req.params.id], (userError, users) => {
         if (userError) return handleDatabaseError(res, 'Public profile', userError);
         if (users.length === 0) return res.status(404).send('User not found.');

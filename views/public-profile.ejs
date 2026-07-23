@@ -6,6 +6,15 @@
     <div class="card shadow-sm mb-4"><div class="card-body">
         <h1 class="h3"><%= profileUser.name %></h1>
         <p class="text-secondary">CampusCycle member since <%= new Date(profileUser.created_at).toLocaleDateString() %></p>
+        <% if (Number(profileUser.review_count) > 0) { %>
+            <p class="mb-0">
+                <span class="fw-semibold">Average seller rating:</span>
+                <span class="badge text-bg-warning">★ <%= Number(profileUser.average_rating).toFixed(1) %> / 5</span>
+                <span class="text-secondary">(<%= profileUser.review_count %> <%= Number(profileUser.review_count) === 1 ? 'review' : 'reviews' %>)</span>
+            </p>
+        <% } else { %>
+            <p class="text-secondary mb-0">No seller ratings yet</p>
+        <% } %>
         <% if (currentUser && currentUser.id !== profileUser.id) { %>
             <a class="btn btn-outline-danger" href="/reports/user/<%= profileUser.id %>">Report User</a>
         <% } %>
