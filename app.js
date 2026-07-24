@@ -1140,18 +1140,48 @@ app.get('/reports/:id/edit', isLoggedIn, (req, res) => {
         }
     );
 });
-app.post('/reports/:id/edit', isLoggedIn, (req, res) => {
+app.post('/reports/:id/edit', isLoggedIn, upload.single('evidenceImage'), (req, res) => {
     if (!req.body.category || !(req.body.description || '').trim()) {
+        deleteUploadedFile(req.file && req.file.filename);
         req.flash('error', 'Choose a category and describe the issue.');
         return res.redirect('/reports/' + req.params.id + '/edit');
     }
-    const sql = `UPDATE reports SET category = ?, description = ?
-                 WHERE id = ? AND reporter_id = ? AND status = 'pending'`;
-    db.query(sql, [req.body.category, (req.body.description || '').trim(), req.params.id, req.session.user.id], (error, result) => {
-        if (error) return handleDatabaseError(res, 'Update report', error);
-        req.flash(result.affectedRows ? 'success' : 'error', result.affectedRows ? 'Report updated.' : 'Report cannot be updated.');
-        res.redirect('/my-reports');
-    });
+    db.query(
+        `SELECT evidence_image FROM reports
+         WHERE id = ? AND reporter_id = ? AND status = 'pending'`,
+        [req.params.id, req.session.user.id],
+        (selectError, reports) => {
+            if (selectError) {
+                deleteUploadedFile(req.file && req.file.filename);
+                return handleDatabaseError(res, 'Find report image', selectError);
+            }
+            if (reports.length === 0) {
+                deleteUploadedFile(req.file && req.file.filename);
+                req.flash('error', 'Report cannot be updated.');
+                return res.redirect('/my-reports');
+            }
+            const oldImage = reports[0].evidence_image;
+            const image = req.file ? req.file.filename : oldImage;
+            const sql = `UPDATE reports SET category = ?, description = ?, evidence_image = ?
+                         WHERE id = ? AND reporter_id = ? AND status = 'pending'`;
+            db.query(
+                sql,
+                [req.body.category, (req.body.description || '').trim(), image,
+                    req.params.id, req.session.user.id],
+                (error, result) => {
+                    if (error || !result.affectedRows) {
+                        deleteUploadedFile(req.file && req.file.filename);
+                        if (error) return handleDatabaseError(res, 'Update report', error);
+                        req.flash('error', 'Report cannot be updated.');
+                        return res.redirect('/my-reports');
+                    }
+                    if (req.file && oldImage) deleteUploadedFile(oldImage);
+                    req.flash('success', 'Report updated.');
+                    res.redirect('/my-reports');
+                }
+            );
+        }
+    );
 });
 app.post('/reports/:id/delete', isLoggedIn, (req, res) => {
     db.query(

@@ -31,6 +31,16 @@
                 <dd class="col-sm-9"><%= item.reported_product_name ? 'Product: ' + item.reported_product_name : 'User: ' + (item.reported_user_name || 'Unavailable') %></dd>
                 <dt class="col-sm-3">Description</dt>
                 <dd class="col-sm-9"><%= item.description %></dd>
+                <dt class="col-sm-3">Evidence image</dt>
+                <dd class="col-sm-9">
+                  <% if (item.evidence_image) { %>
+                    <a href="/uploads/<%= item.evidence_image %>" target="_blank" rel="noopener noreferrer">
+                      <img class="img-fluid rounded border" src="/uploads/<%= item.evidence_image %>" alt="Evidence for report #<%= item.id %>">
+                    </a>
+                  <% } else { %>
+                    <span class="text-muted">No evidence image provided.</span>
+                  <% } %>
+                </dd>
                 <dt class="col-sm-3">Current resolution</dt>
                 <dd class="col-sm-9"><%= item.resolution_message || 'Not resolved yet.' %></dd>
               </dl>
